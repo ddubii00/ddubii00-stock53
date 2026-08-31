@@ -29,3 +29,16 @@ services:
     depends_on:
       turtle-api:
         condition: service_healthy
+
+  turtle-scanner:
+    build: .
+    profiles: ["full-scan"]
+    env_file:
+      - path: .env
+        required: false
+    command: ["python", "-m", "oracle.scanner"]
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      turtle-api:
+        condition: service_healthy

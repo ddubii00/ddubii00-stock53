@@ -6,6 +6,15 @@ Vercel은 화면/공개데이터 테스트용이며, 실제 장중 감시는 Ora
 
 - `turtle-api`: FastAPI + 웹 UI API
 - `turtle-worker`: 후보/보유종목 반복 감시
+- `turtle-scanner`: KOSPI/KOSDAQ 전체를 시총·확정 영업이익으로 먼저 거른 뒤 PREALERT/BREAKOUT 계산
+
+전체시장 1회 검색:
+
+```bash
+docker compose --profile full-scan run --rm turtle-scanner
+```
+
+`FULL_SCAN_INTERVAL_SECONDS`가 0이면 한 번 실행하고 종료합니다. Oracle scheduler/cron에서 위 명령을 장중 주기적으로 호출하거나 양수로 설정해 반복할 수 있습니다. 검색 결과와 재무 캐시는 API와 같은 SQLite volume에 저장됩니다.
 - `KIS`: 실전 데이터 1순위
 - `Telegram`: PREALERT / BREAKOUT / ADD / STOP / EXIT 알림
 - `SQLite`: 초기 상태/중복신호 저장 (`DB_PATH`)

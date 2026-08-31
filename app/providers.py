@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -9,6 +10,8 @@ from typing import Protocol
 from zoneinfo import ZoneInfo
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from app.strategy import Bar
 
@@ -135,17 +138,35 @@ class NaverMarketDataProvider:
 
     def __init__(self, timeout: float = 7.0):
         self.timeout = timeout
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": "Mozilla/5.0 (compatible; TurtleSignalGuide/0.4)",
-                "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.5",
-                "Referer": "https://finance.naver.com/",
-            }
-        )
+        self._local = threading.local()
+
+    def _session(self) -> requests.Session:
+        session = getattr(self._local, "session", None)
+        if session is None:
+            session = requests.Session()
+            session.headers.update(
+                {
+                    "User-Agent": "Mozilla/5.0 (compatible; TurtleSignalGuide/0.5)",
+                    "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.5",
+                    "Referer": "https://finance.naver.com/",
+                }
+            )
+            session.mount(
+                "https://",
+                HTTPAdapter(
+                    max_retries=Retry(
+                        total=2,
+                        backoff_factor=0.3,
+                        status_forcelist=(429, 500, 502, 503, 504),
+                        allowed_methods=("GET",),
+                    )
+                ),
+            )
+            self._local.session = session
+        return session
 
     def get_daily_ohlcv(self, symbol: str, count: int = 260) -> list[Bar]:
-        response = self.session.get(
+        response = self._session().get(
             self.chart_url,
             params={"symbol": symbol, "timeframe": "day", "count": max(count + 1, 140), "requestType": "0"},
             timeout=self.timeout,
@@ -173,7 +194,7 @@ class NaverMarketDataProvider:
         return bars
 
     def get_current_price(self, symbol: str) -> Quote:
-        response = self.session.get(
+        response = self._session().get(
             self.quote_url,
             params={"query": f"SERVICE_ITEM:{symbol}"},
             timeout=self.timeout,

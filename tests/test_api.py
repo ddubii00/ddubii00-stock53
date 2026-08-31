@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import time
 
 from api.index import app
 
@@ -37,3 +38,42 @@ def test_get_guide_route_is_deploy_smoke_test():
     response = client.get("/api/guide", params={"provider": "demo"})
     assert response.status_code == 200
     assert response.json()["source"] == "demo"
+
+
+def test_full_market_scan_demo_is_persisted_and_read_by_candidates(monkeypatch, tmp_path):
+    monkeypatch.setenv("APP_MODE", "oracle")
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "api-scan.db"))
+    response = client.post(
+        "/api/full-market-scans",
+        json={
+            "provider": "demo",
+            "market": "ALL",
+            "min_market_cap_100m": 500,
+            "min_operating_profit_100m": 50,
+            "signal_mode": "prealert",
+        },
+    )
+    assert response.status_code == 202
+    scan_id = response.json()["scan_id"]
+    for _ in range(100):
+        status = client.get(f"/api/full-market-scans/{scan_id}")
+        assert status.status_code == 200
+        if status.json()["status"] != "RUNNING":
+            break
+        time.sleep(0.02)
+    assert status.json()["status"] == "COMPLETED"
+    assert status.json()["universe_count"] == 15
+    assert status.json()["fundamentals_passed"] == 15
+
+    candidates = client.get("/api/candidates", params={"scope": "all", "scan_id": scan_id})
+    assert candidates.status_code == 200
+    payload = candidates.json()
+    assert payload["full_market_scan"] is True
+    assert payload["scan_status"] == "COMPLETED"
+    assert all(item["stage"] == "PREALERT" for item in payload["items"])
+
+
+def test_vercel_refuses_background_full_market_worker(monkeypatch):
+    monkeypatch.setenv("APP_MODE", "vercel")
+    response = client.post("/api/full-market-scans", json={"provider": "demo"})
+    assert response.status_code == 409

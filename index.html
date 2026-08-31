@@ -6,7 +6,7 @@
 <title>Turtle Signal Guide</title>
 <style>
 :root{color-scheme:dark;--bg:#090d12;--panel:#111821;--panel2:#0e151d;--line:#263343;--text:#edf3f8;--muted:#92a4b7;--yellow:#facc15;--green:#22c55e;--red:#f05252;--blue:#38bdf8}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Noto Sans KR",sans-serif}.wrap{max-width:1280px;margin:auto;padding:24px}.top{display:flex;gap:18px;justify-content:space-between;align-items:flex-end;margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.13em;color:var(--blue);font-weight:800}.title{font-size:32px;font-weight:850;margin:5px 0}.muted{color:var(--muted)}.tiny{font-size:12px}.status{border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:13px}.buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.button,select,input{appearance:none;background:#16202b;border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:10px}.button{cursor:pointer;font-weight:750}.button:hover{border-color:#55708d}.button:disabled{opacity:.55;cursor:not-allowed}.button.primary{background:#0d4c6b;border-color:#1679a7}.button.live{min-width:96px}.button.live.active{background:#15803d;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12)}.button.success{background:#14532d;border-color:#22c55e}.button.danger{border-color:#8b2525}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.card,.actionBox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}.hero{padding:20px}.signal{font-size:13px;font-weight:800}.big{font-size:28px;font-weight:850;margin:6px 0}.yellow{color:var(--yellow)}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.section{font-size:18px;font-weight:750;margin:26px 0 12px}.notice{padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px;line-height:1.55;margin-bottom:14px}.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:1000px;background:var(--panel)}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;white-space:nowrap}th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}tbody tr{cursor:pointer}tbody tr:hover{background:#16202b}.stage{font-weight:850}.error{color:var(--red)}.kv{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:10px 0;font-size:14px}.kv:first-child{border-top:0}.bar{height:8px;background:#202b37;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--blue)}.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}.field input,.field select{width:100%}.actionBox{background:var(--panel2)}.actionTitle{font-size:26px;font-weight:900}.tracked{border-color:#2563eb}.right{margin-left:auto}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:3px 3px 0 0;font-size:12px}.foot{margin:28px 0;color:var(--muted);font-size:13px;line-height:1.65}@media(max-width:720px){.top{align-items:flex-start;flex-direction:column}.title{font-size:27px}.right{margin-left:0}.wrap{padding:16px}#symbolsInput{min-width:100%!important}}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Noto Sans KR",sans-serif}.wrap{max-width:1280px;margin:auto;padding:24px}.top{display:flex;gap:18px;justify-content:space-between;align-items:flex-end;margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.13em;color:var(--blue);font-weight:800}.title{font-size:32px;font-weight:850;margin:5px 0}.muted{color:var(--muted)}.tiny{font-size:12px}.status{border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:13px}.buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.button,select,input{appearance:none;background:#16202b;border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:10px}.button{cursor:pointer;font-weight:750}.button:hover{border-color:#55708d}.button:disabled{opacity:.55;cursor:not-allowed}.button.primary{background:#0d4c6b;border-color:#1679a7}.button.live{min-width:96px}.button.live.active{background:#15803d;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12)}.button.success{background:#14532d;border-color:#22c55e}.button.danger{border-color:#8b2525}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.card,.actionBox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}.hero{padding:20px}.signal{font-size:13px;font-weight:800}.big{font-size:28px;font-weight:850;margin:6px 0}.yellow{color:var(--yellow)}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.section{font-size:18px;font-weight:750;margin:26px 0 12px}.notice{padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px;line-height:1.55;margin-bottom:14px}.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:1180px;background:var(--panel)}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;white-space:nowrap}th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}tbody tr{cursor:pointer}tbody tr:hover{background:#16202b}.stage{font-weight:850}.error{color:var(--red)}.kv{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:10px 0;font-size:14px}.kv:first-child{border-top:0}.bar{height:8px;background:#202b37;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--blue)}.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}.field input,.field select{width:100%}.actionBox{background:var(--panel2)}.actionTitle{font-size:26px;font-weight:900}.tracked{border-color:#2563eb}.right{margin-left:auto}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:3px 3px 0 0;font-size:12px}.foot{margin:28px 0;color:var(--muted);font-size:13px;line-height:1.65}.scanPanel{margin-bottom:10px}.scanProgress{min-height:20px;margin-top:10px}@media(max-width:720px){.top{align-items:flex-start;flex-direction:column}.title{font-size:27px}.right{margin-left:0}.wrap{padding:16px}#symbolsInput{min-width:100%!important}}
 </style>
 </head>
 <body>
@@ -18,7 +18,7 @@
       <div class="muted">후보검색 → 1% PREALERT → 20D BREAKOUT → 0.5N 추매 → 2N STOP → 10D EXIT</div>
     </div>
     <div class="buttons">
-      <select id="provider" aria-label="데이터 공급자"><option value="auto">AUTO</option><option value="naver">NAVER</option><option value="krx">KRX</option><option value="demo">DEMO</option></select>
+      <select id="provider" aria-label="데이터 공급자"><option value="auto">AUTO</option><option value="kis">KIS</option><option value="naver">NAVER</option><option value="krx">KRX</option><option value="demo">DEMO</option></select>
       <button id="refreshBtn" class="button primary" type="button">↻ 새로고침</button>
       <button id="liveBtn" class="button live" type="button">실시간</button>
       <span id="scanState" class="status" aria-live="polite">대기</span>
@@ -35,15 +35,27 @@
   </section>
 
   <h2 class="section">후보 검색</h2>
-  <div class="buttons" style="margin-bottom:10px">
-    <input id="symbolsInput" style="min-width:390px" value="000660,005930,005380,012450,035420" placeholder="종목코드 쉼표 구분">
-    <span id="providerNote" class="muted tiny">Vercel은 소수 watchlist 탐색용입니다.</span>
-    <span id="lastUpdated" class="muted tiny right">마지막 조회: -</span>
-  </div>
+  <section class="card scanPanel">
+    <div class="formGrid">
+      <div class="field"><label for="scanScope">검색 범위</label><select id="scanScope"><option value="all" selected>KOSPI/KOSDAQ 전체</option><option value="watchlist">직접 입력 종목</option></select></div>
+      <div class="field fullMarketField"><label for="marketScope">시장</label><select id="marketScope"><option value="ALL">KOSPI + KOSDAQ</option><option value="KOSPI">KOSPI</option><option value="KOSDAQ">KOSDAQ</option></select></div>
+      <div class="field fullMarketField"><label for="minMarketCap">최소 시가총액 (억원)</label><input id="minMarketCap" type="number" value="500" min="0" step="100"></div>
+      <div class="field fullMarketField"><label for="minOperatingProfit">최소 영업이익 (억원)</label><input id="minOperatingProfit" type="number" value="50" step="10"></div>
+      <div class="field fullMarketField"><label for="signalMode">표시 신호</label><select id="signalMode"><option value="prealert">PREALERT만</option><option value="actionable">PREALERT + BREAKOUT</option></select></div>
+    </div>
+    <div id="watchlistControls" class="buttons" hidden style="margin-top:10px"><input id="symbolsInput" style="min-width:390px" value="000660,005930,005380,012450,035420" placeholder="종목코드 쉼표 구분"></div>
+    <div class="buttons" style="margin-top:12px">
+      <button id="marketScanBtn" class="button success fullMarketField" type="button">전체시장 새 검색</button>
+      <span id="providerNote" class="muted tiny">시총 → 확정 영업이익 → PREALERT 순으로 계산합니다.</span>
+      <span id="lastUpdated" class="muted tiny right">마지막 조회: -</span>
+    </div>
+    <div id="scanProgress" class="muted tiny scanProgress" aria-live="polite">저장된 결과를 조회하거나 전체시장 새 검색을 눌러주세요.</div>
+  </section>
+  <div class="notice"><b>단위:</b> 시가총액과 영업이익은 모두 억원입니다. 영업이익은 예상치가 아닌 최근 확정 연간 실적을 사용하며, 재무값이 없는 ETF·ETN 등은 제외합니다.</div>
   <div class="tableWrap">
     <table>
-      <thead><tr><th>상태</th><th>종목</th><th>현재가</th><th>20D 돌파가</th><th>거리</th><th>ATR20</th><th>Quality</th><th>Source</th></tr></thead>
-      <tbody id="candidateBody"><tr><td colspan="8" class="muted" style="text-align:center">새로고침을 눌러주세요.</td></tr></tbody>
+      <thead><tr><th>상태</th><th>종목</th><th>시장</th><th>시총(억)</th><th>영업이익(억)</th><th>현재가</th><th>20D 돌파가</th><th>거리</th><th>Quality</th><th>Source</th></tr></thead>
+      <tbody id="candidateBody"><tr><td colspan="10" class="muted" style="text-align:center">전체시장 새 검색 또는 새로고침을 눌러주세요.</td></tr></tbody>
     </table>
   </div>
 
@@ -93,16 +105,20 @@
   <p class="foot">Risk 방식은 <code>equity × risk% ÷ (2N)</code>의 보수적 개인용 가이드이며, 원조 futures contract sizing 전체를 복제한다고 주장하지 않습니다. 고정 수익목표는 사용하지 않습니다.</p>
 </main>
 <script>
-const STORAGE_KEY='turtleTracking.v1';
+const STORAGE_KEY='turtleTracking.v1',SCAN_CONFIG_KEY='turtleScanConfig.v1',SCAN_ID_KEY='turtleLastFullScan.v1';
 const fmt=n=>Number.isFinite(Number(n))?Math.round(Number(n)).toLocaleString('ko-KR')+'원':'-';
 const pct=n=>Number.isFinite(Number(n))?Number(n).toFixed(2)+'%':'-';
 const num=id=>Number(document.getElementById(id).value||0);
 const el=id=>document.getElementById(id);
-let selected=null,lastGuide=null,realtimeTimer=null,cycleBusy=false,realtimeMs=10000;
+let selected=null,lastGuide=null,realtimeTimer=null,cycleBusy=false,fullScanBusy=false,realtimeMs=10000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false;
 
 function actionClass(action){return action==='ADD_NOW'||action==='ENTRY_NOW'?'green':action==='STOP_NOW'||action==='EXIT_NOW'?'red':action==='WAIT_ENTRY'?'yellow':'blue'}
 function stored(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
+function storedScanConfig(){try{return JSON.parse(localStorage.getItem(SCAN_CONFIG_KEY)||'null')}catch{return null}}
 function stageClass(stage){return stage==='BREAKOUT'?'green':stage==='PREALERT'?'yellow':stage==='ERROR'?'red':''}
+function scanConfig(){return {provider:el('provider').value,market:el('marketScope').value,min_market_cap_100m:num('minMarketCap'),min_operating_profit_100m:num('minOperatingProfit'),signal_mode:el('signalMode').value}}
+function saveScanConfig(){localStorage.setItem(SCAN_CONFIG_KEY,JSON.stringify({scope:el('scanScope').value,...scanConfig()}))}
+function updateScanVisibility(){const full=el('scanScope').value==='all';document.querySelectorAll('.fullMarketField').forEach(node=>node.hidden=!full);el('watchlistControls').hidden=full;el('marketScanBtn').disabled=full&&!fullScanSupported;saveScanConfig()}
 
 function showCandidate(data){
   selected=data;
@@ -126,23 +142,44 @@ function showCandidate(data){
 function appendCandidateRow(body,item){
   const row=document.createElement('tr');
   const values=item.stage==='ERROR'
-    ?[{text:'ERROR',cls:'error'},{text:item.name||item.symbol},{text:item.error||'조회 실패',span:6,cls:'error'}]
-    :[{text:item.stage,cls:'stage '+stageClass(item.stage)},{text:(item.name||item.symbol)+' · '+item.symbol},{text:fmt(item.current)},{text:fmt(item.breakout20)},{text:pct(item.distance_pct)},{text:fmt(item.atr20)},{text:String(item.score)},{text:(item.source||'').toUpperCase()}];
+    ?[{text:'ERROR',cls:'error'},{text:item.name||item.symbol},{text:item.error||'조회 실패',span:8,cls:'error'}]
+    :[{text:item.stage,cls:'stage '+stageClass(item.stage)},{text:(item.name||item.symbol)+' · '+item.symbol},{text:item.market||'-'},{text:Number.isFinite(Number(item.market_cap_100m))?Math.round(Number(item.market_cap_100m)).toLocaleString('ko-KR'):'-'},{text:Number.isFinite(Number(item.operating_profit_100m))?Math.round(Number(item.operating_profit_100m)).toLocaleString('ko-KR'):'-'},{text:fmt(item.current)},{text:fmt(item.breakout20)},{text:pct(item.distance_pct)},{text:String(item.score)},{text:(item.source||'').toUpperCase()}];
   values.forEach(value=>{const cell=document.createElement('td');cell.textContent=value.text;cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;row.appendChild(cell)});
   if(item.stage!=='ERROR')row.addEventListener('click',()=>showCandidate(item));
   body.appendChild(row);
 }
 
 async function loadCandidates(){
-  const provider=el('provider').value,symbols=el('symbolsInput').value.trim();
-  const response=await fetch('/api/candidates?provider='+encodeURIComponent(provider)+'&symbols='+encodeURIComponent(symbols));
+  const provider=el('provider').value,scope=el('scanScope').value,params=new URLSearchParams({provider,scope});
+  if(scope==='watchlist')params.set('symbols',el('symbolsInput').value.trim());else if(lastScanId)params.set('scan_id',String(lastScanId));
+  const response=await fetch('/api/candidates?'+params.toString());
   const data=await response.json();if(!response.ok)throw new Error(data.detail||'candidate fetch failed');
   el('providerNote').textContent='Provider: '+data.provider+' · '+data.note;
+  if(data.full_market_scan)el('scanProgress').textContent=data.scan_status==='COMPLETED'?`검색 #${data.scan_id} · 시총 통과 ${Number(data.universe_count||0).toLocaleString('ko-KR')}개 → 영업이익 통과 ${Number(data.fundamentals_passed||0).toLocaleString('ko-KR')}개 → 후보 ${(data.items||[]).length.toLocaleString('ko-KR')}개 · 오류 ${Number(data.error_count||0).toLocaleString('ko-KR')}개`:data.note;
   const body=el('candidateBody');body.replaceChildren();
   (data.items||[]).forEach(item=>appendCandidateRow(body,item));
-  if(!(data.items||[]).length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=8;cell.textContent='후보가 없습니다.';cell.className='muted';cell.style.textAlign='center';row.appendChild(cell);body.appendChild(row)}
+  if(!(data.items||[]).length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=10;cell.textContent=data.note||'후보가 없습니다.';cell.className='muted';cell.style.textAlign='center';row.appendChild(cell);body.appendChild(row)}
   const current=(data.items||[]).find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||(data.items||[]).find(item=>item.stage!=='ERROR');
   if(current)showCandidate(current);
+}
+
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function startFullMarketScan(){
+  if(cycleBusy||fullScanBusy)return;
+  if(!fullScanSupported){alert('전체시장 검색은 Oracle 또는 로컬 APP_MODE=oracle에서 실행하세요. Vercel은 마지막 저장 결과만 표시합니다.');return}
+  fullScanBusy=true;saveScanConfig();el('marketScanBtn').disabled=true;el('refreshBtn').disabled=true;el('marketScanBtn').textContent='전체시장 검색중...';el('scanState').textContent='검색중';
+  try{
+    let response=await fetch('/api/full-market-scans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(scanConfig())});
+    let data=await response.json();if(!response.ok)throw new Error(data.detail||'전체시장 검색 시작 실패');lastScanId=Number(data.scan_id);localStorage.setItem(SCAN_ID_KEY,String(lastScanId));
+    while(true){
+      response=await fetch('/api/full-market-scans/'+lastScanId);data=await response.json();if(!response.ok)throw new Error(data.detail||'검색 상태 조회 실패');
+      const progress=data.total?Math.min(100,Math.round(Number(data.processed||0)/Number(data.total)*100)):0;
+      el('scanProgress').textContent=`검색 #${lastScanId} · ${data.message||data.phase} ${data.total?`(${Number(data.processed||0).toLocaleString('ko-KR')}/${Number(data.total).toLocaleString('ko-KR')}, ${progress}%)`:''}`;
+      if(data.status==='COMPLETED')break;if(data.status==='FAILED')throw new Error(data.message||'전체시장 검색 실패');await delay(1000);
+    }
+    await loadCandidates();el('lastUpdated').textContent='마지막 전체검색: '+new Date().toLocaleString('ko-KR');
+  }catch(error){el('scanProgress').textContent='전체시장 검색 실패: '+error.message;alert('전체시장 검색 실패: '+error.message)}
+  finally{fullScanBusy=false;el('marketScanBtn').disabled=!fullScanSupported;el('refreshBtn').disabled=false;el('marketScanBtn').textContent='전체시장 새 검색';el('scanState').textContent=realtimeTimer?'검색중':'대기'}
 }
 
 function guidePayload(){
@@ -169,13 +206,13 @@ function showGuide(data){
 }
 
 async function runCycle({showErrors=false}={}){
-  if(cycleBusy)return;cycleBusy=true;
+  if(cycleBusy||fullScanBusy)return;cycleBusy=true;
   el('refreshBtn').disabled=true;el('refreshBtn').textContent='↻ 조회중...';el('scanState').textContent=realtimeTimer?'검색중':'조회중';
   try{
     const payload=guidePayload(),tasks=[loadCandidates()];if(payload.symbol&&payload.entry_price)tasks.push(calculateGuide(showErrors));
     const results=await Promise.allSettled(tasks),candidateResult=results[0];
     if(candidateResult.status==='rejected'){
-      const body=el('candidateBody'),row=document.createElement('tr'),cell=document.createElement('td');body.replaceChildren();cell.colSpan=8;cell.className='error';cell.style.textAlign='center';cell.textContent='후보 조회 실패: '+String(candidateResult.reason?.message||candidateResult.reason);row.appendChild(cell);body.appendChild(row);
+      const body=el('candidateBody'),row=document.createElement('tr'),cell=document.createElement('td');body.replaceChildren();cell.colSpan=10;cell.className='error';cell.style.textAlign='center';cell.textContent='후보 조회 실패: '+String(candidateResult.reason?.message||candidateResult.reason);row.appendChild(cell);body.appendChild(row);
     }
     if(results[1]?.status==='rejected')el('gReason').textContent='가이드 조회 실패: '+String(results[1].reason?.message||results[1].reason);
     if(results.some(result=>result.status==='fulfilled'))el('lastUpdated').textContent='마지막 조회: '+new Date().toLocaleString('ko-KR');
@@ -205,8 +242,10 @@ function restoreTracking(){
   const payload=stored();if(!payload)return false;el('provider').value=payload.provider||'auto';el('gSymbol').value=payload.symbol||'';el('gEntry').value=payload.entry_price||0;el('gAtr').value=payload.n_at_entry||0;el('gUnits').value=String(payload.filled_units??0);el('sizingMode').value=payload.sizing_mode||'fixed';el('unitAmount').value=payload.fixed_unit_amount||10000000;el('accountEquity').value=payload.account_equity||100000000;el('riskPct').value=payload.risk_pct??0.5;el('trackingState').textContent='추적 저장됨 · '+payload.symbol;el('trackingCard').classList.add('tracked');updateSizingVisibility();calculateGuide(false).catch(()=>{});return true;
 }
 
-el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('liveBtn').addEventListener('click',toggleRealtime);el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',saveTracking);el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',clearTracking);el('sizingMode').addEventListener('change',updateSizingVisibility);
-fetch('/api/health').then(response=>response.json()).then(data=>{el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';realtimeMs=Math.max(3000,Number(data.realtime_poll_seconds||10)*1000)}).catch(()=>el('health').textContent='API 미연결');
+const initialScan=storedScanConfig();if(initialScan){el('scanScope').value=initialScan.scope||'all';el('marketScope').value=initialScan.market||'ALL';el('minMarketCap').value=initialScan.min_market_cap_100m??500;el('minOperatingProfit').value=initialScan.min_operating_profit_100m??50;el('signalMode').value=initialScan.signal_mode||'prealert';if(initialScan.provider)el('provider').value=initialScan.provider}
+el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('liveBtn').addEventListener('click',toggleRealtime);el('marketScanBtn').addEventListener('click',startFullMarketScan);el('scanScope').addEventListener('change',()=>{updateScanVisibility();loadCandidates().catch(error=>el('scanProgress').textContent=error.message)});['marketScope','minMarketCap','minOperatingProfit','signalMode','provider'].forEach(id=>el(id).addEventListener('change',saveScanConfig));el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',saveTracking);el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',clearTracking);el('sizingMode').addEventListener('change',updateSizingVisibility);
+updateScanVisibility();
+fetch('/api/health').then(response=>response.json()).then(data=>{fullScanSupported=Boolean(data.full_market_scan_supported);el('marketScanBtn').disabled=el('scanScope').value==='all'&&!fullScanSupported;el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';realtimeMs=Math.max(3000,Number(data.realtime_poll_seconds||10)*1000);if(!fullScanSupported)el('scanProgress').textContent='Vercel에서는 전체검색을 실행하지 않습니다. 직접 입력 종목을 조회하거나 Oracle scanner 결과를 연결하세요.'}).catch(()=>el('health').textContent='API 미연결');
 if(!restoreTracking())fetch('/api/sample?stage=prealert').then(response=>response.json()).then(showCandidate).catch(()=>{});
 </script>
 </body>

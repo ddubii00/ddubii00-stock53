@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
+import threading
 from contextlib import closing
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+
+_INIT_LOCK = threading.Lock()
+_INITIALIZED_PATHS: set[str] = set()
 
 
 def db_path() -> str:
@@ -19,9 +26,13 @@ def connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    with closing(connect()) as conn:
-        conn.executescript(
-            """
+    resolved = str(Path(db_path()).resolve())
+    with _INIT_LOCK:
+        if resolved in _INITIALIZED_PATHS:
+            return
+        with closing(connect()) as conn:
+            conn.executescript(
+                """
             PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS positions (
               symbol TEXT PRIMARY KEY,
@@ -43,12 +54,50 @@ def init_db() -> None:
               signal_type TEXT NOT NULL,
               created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
-            """
-        )
-        columns = {row[1] for row in conn.execute("PRAGMA table_info(positions)").fetchall()}
-        if "common_stop" not in columns:
-            conn.execute("ALTER TABLE positions ADD COLUMN common_stop REAL NOT NULL DEFAULT 0")
-        conn.commit()
+            CREATE TABLE IF NOT EXISTS universe_fundamentals (
+              symbol TEXT PRIMARY KEY,
+              name TEXT NOT NULL DEFAULT '',
+              market TEXT NOT NULL,
+              market_cap_100m REAL NOT NULL,
+              operating_profit_100m REAL,
+              fiscal_period TEXT,
+              source TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS full_market_scans (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              status TEXT NOT NULL,
+              phase TEXT NOT NULL DEFAULT 'queued',
+              provider TEXT NOT NULL,
+              market TEXT NOT NULL,
+              min_market_cap_100m REAL NOT NULL,
+              min_operating_profit_100m REAL NOT NULL,
+              signal_mode TEXT NOT NULL,
+              processed INTEGER NOT NULL DEFAULT 0,
+              total INTEGER NOT NULL DEFAULT 0,
+              universe_count INTEGER NOT NULL DEFAULT 0,
+              fundamentals_passed INTEGER NOT NULL DEFAULT 0,
+              error_count INTEGER NOT NULL DEFAULT 0,
+              message TEXT NOT NULL DEFAULT '',
+              started_at TEXT NOT NULL,
+              finished_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS full_market_scan_items (
+              scan_id INTEGER NOT NULL,
+              ordinal INTEGER NOT NULL,
+              payload TEXT NOT NULL,
+              PRIMARY KEY(scan_id, ordinal),
+              FOREIGN KEY(scan_id) REFERENCES full_market_scans(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_full_market_scans_finished
+              ON full_market_scans(status, id DESC);
+                """
+            )
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(positions)").fetchall()}
+            if "common_stop" not in columns:
+                conn.execute("ALTER TABLE positions ADD COLUMN common_stop REAL NOT NULL DEFAULT 0")
+            conn.commit()
+        _INITIALIZED_PATHS.add(resolved)
 
 
 def list_positions() -> list[dict]:
@@ -157,3 +206,205 @@ def event_once(event_key: str, symbol: str, signal_type: str) -> bool:
             return True
         except sqlite3.IntegrityError:
             return False
+
+
+def get_cached_fundamental(symbol: str, max_age_days: int = 7) -> dict | None:
+    """Return a recent fundamentals row, including a cached NULL profit."""
+
+    init_db()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max(0, max_age_days))
+    with closing(connect()) as conn:
+        row = conn.execute(
+            "SELECT * FROM universe_fundamentals WHERE symbol=?", (symbol,)
+        ).fetchone()
+        if row is None:
+            return None
+        try:
+            updated_at = datetime.fromisoformat(str(row["updated_at"]).replace("Z", "+00:00"))
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+        return dict(row) if updated_at >= cutoff else None
+
+
+def get_cached_fundamentals(symbols: list[str], max_age_days: int = 7) -> dict[str, dict]:
+    """Bulk cache lookup to avoid opening one SQLite connection per stock."""
+
+    if not symbols:
+        return {}
+    init_db()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max(0, max_age_days))
+    result: dict[str, dict] = {}
+    with closing(connect()) as conn:
+        for start in range(0, len(symbols), 900):
+            chunk = symbols[start : start + 900]
+            placeholders = ",".join("?" for _ in chunk)
+            rows = conn.execute(
+                f"SELECT * FROM universe_fundamentals WHERE symbol IN ({placeholders})", chunk
+            ).fetchall()
+            for row in rows:
+                try:
+                    updated_at = datetime.fromisoformat(
+                        str(row["updated_at"]).replace("Z", "+00:00")
+                    )
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+                if updated_at >= cutoff:
+                    result[str(row["symbol"])] = dict(row)
+    return result
+
+
+def save_fundamental(payload: dict) -> None:
+    init_db()
+    updated_at = datetime.now(timezone.utc).isoformat()
+    with closing(connect()) as conn:
+        conn.execute(
+            """
+            INSERT INTO universe_fundamentals(
+              symbol,name,market,market_cap_100m,operating_profit_100m,
+              fiscal_period,source,updated_at
+            ) VALUES(?,?,?,?,?,?,?,?)
+            ON CONFLICT(symbol) DO UPDATE SET
+              name=excluded.name,
+              market=excluded.market,
+              market_cap_100m=excluded.market_cap_100m,
+              operating_profit_100m=excluded.operating_profit_100m,
+              fiscal_period=excluded.fiscal_period,
+              source=excluded.source,
+              updated_at=excluded.updated_at
+            """,
+            (
+                payload["symbol"],
+                payload.get("name", ""),
+                payload["market"],
+                float(payload["market_cap_100m"]),
+                payload.get("operating_profit_100m"),
+                payload.get("fiscal_period"),
+                payload.get("source", "naver"),
+                updated_at,
+            ),
+        )
+        conn.commit()
+
+
+def create_full_market_scan(payload: dict) -> int:
+    init_db()
+    now = datetime.now(timezone.utc).isoformat()
+    with closing(connect()) as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO full_market_scans(
+              status,phase,provider,market,min_market_cap_100m,
+              min_operating_profit_100m,signal_mode,started_at,message
+            ) VALUES('RUNNING','universe',?,?,?,?,?,?,?)
+            """,
+            (
+                payload["provider"],
+                payload["market"],
+                float(payload["min_market_cap_100m"]),
+                float(payload["min_operating_profit_100m"]),
+                payload["signal_mode"],
+                now,
+                "전체시장 종목목록 조회중",
+            ),
+        )
+        conn.commit()
+        return int(cursor.lastrowid)
+
+
+def update_full_market_scan(scan_id: int, **fields) -> None:
+    allowed = {
+        "status",
+        "phase",
+        "processed",
+        "total",
+        "universe_count",
+        "fundamentals_passed",
+        "error_count",
+        "message",
+        "finished_at",
+    }
+    values = {key: value for key, value in fields.items() if key in allowed}
+    if not values:
+        return
+    assignments = ",".join(f"{key}=?" for key in values)
+    with closing(connect()) as conn:
+        conn.execute(
+            f"UPDATE full_market_scans SET {assignments} WHERE id=?",
+            (*values.values(), scan_id),
+        )
+        conn.commit()
+
+
+def finish_full_market_scan(scan_id: int, items: list[dict], **summary) -> None:
+    """Atomically publish a completed candidate snapshot."""
+
+    finished_at = datetime.now(timezone.utc).isoformat()
+    with closing(connect()) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("DELETE FROM full_market_scan_items WHERE scan_id=?", (scan_id,))
+        conn.executemany(
+            "INSERT INTO full_market_scan_items(scan_id,ordinal,payload) VALUES(?,?,?)",
+            [
+                (scan_id, ordinal, json.dumps(item, ensure_ascii=False, separators=(",", ":")))
+                for ordinal, item in enumerate(items)
+            ],
+        )
+        conn.execute(
+            """
+            UPDATE full_market_scans
+            SET status='COMPLETED',phase='completed',processed=?,total=?,
+                universe_count=?,fundamentals_passed=?,error_count=?,message=?,finished_at=?
+            WHERE id=?
+            """,
+            (
+                int(summary.get("processed", 0)),
+                int(summary.get("total", 0)),
+                int(summary.get("universe_count", 0)),
+                int(summary.get("fundamentals_passed", 0)),
+                int(summary.get("error_count", 0)),
+                summary.get("message", f"후보 {len(items)}개 선정"),
+                finished_at,
+                scan_id,
+            ),
+        )
+        conn.commit()
+
+
+def fail_full_market_scan(scan_id: int, message: str) -> None:
+    update_full_market_scan(
+        scan_id,
+        status="FAILED",
+        phase="failed",
+        message=message[:1000],
+        finished_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def get_full_market_scan(scan_id: int, include_items: bool = True) -> dict | None:
+    init_db()
+    with closing(connect()) as conn:
+        row = conn.execute("SELECT * FROM full_market_scans WHERE id=?", (scan_id,)).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["items"] = []
+        if include_items and result["status"] == "COMPLETED":
+            item_rows = conn.execute(
+                "SELECT payload FROM full_market_scan_items WHERE scan_id=? ORDER BY ordinal",
+                (scan_id,),
+            ).fetchall()
+            result["items"] = [json.loads(item["payload"]) for item in item_rows]
+        return result
+
+
+def get_latest_full_market_scan(include_items: bool = True) -> dict | None:
+    init_db()
+    with closing(connect()) as conn:
+        row = conn.execute(
+            "SELECT id FROM full_market_scans WHERE status='COMPLETED' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    return get_full_market_scan(int(row["id"]), include_items) if row else None

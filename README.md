@@ -55,18 +55,37 @@ fallback은 일봉과 현재가를 같은 provider에서 성공시킨 뒤 하나
 
 - `DemoMarketDataProvider`: 키 없는 UI/API 테스트
 - `NaverMarketDataProvider`: Vercel 소수 watchlist 탐색
+- `NaverUniverseProvider`: KOSPI/KOSDAQ 시가총액 목록과 최근 확정 연간 영업이익
+- `DemoUniverseProvider`: 키 없는 전체검색 API/UI 테스트
 - `KrxMarketDataProvider`: `pykrx` 선택 fallback
 - `KisMarketDataProvider`: Oracle 실전 신호 우선 REST 데이터
 - `FallbackMarketDataProvider`: 동일 provider snapshot 단위 fallback
 
 Naver/KRX는 탐색·테스트용입니다. 실전 Oracle 판단은 KIS를 기준으로 운영하세요.
 
+## KOSPI/KOSDAQ 전체 PREALERT 검색
+
+전체검색은 약 4천 개 차트를 무조건 요청하지 않습니다.
+
+```text
+KOSPI/KOSDAQ 종목목록
+→ 최소 시가총액(억원)
+→ 최근 확정 연간 영업이익(억원, 컨센서스 제외)
+→ 통과 종목만 KIS/Naver 일봉·현재가 조회
+→ PREALERT 또는 PREALERT+BREAKOUT
+→ SQLite 결과 snapshot
+```
+
+기본값은 시가총액 500억원 이상, 영업이익 50억원 이상이며 UI에서 숫자를 바꿀 수 있습니다. 영업이익을 제공하지 않는 ETF·ETN 등은 제외합니다. 재무값은 기본 7일 캐시하고 시세 신호는 새 검색 때 다시 계산합니다.
+
+전체검색은 로컬/Oracle 장기 작업입니다. Vercel serverless 함수에는 background thread를 실행하지 않으며, Vercel UI는 직접 입력 watchlist 또는 외부 Oracle scanner가 저장·제공한 snapshot을 읽는 용도로 둡니다.
+
 ## 로컬 실행
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-DATA_PROVIDER=demo .venv/bin/uvicorn api.index:app --host 127.0.0.1 --port 8000
+APP_MODE=oracle DATA_PROVIDER=demo .venv/bin/uvicorn api.index:app --host 127.0.0.1 --port 8000
 ```
 
 브라우저: `http://127.0.0.1:8000`
@@ -78,6 +97,9 @@ DATA_PROVIDER=demo .venv/bin/uvicorn api.index:app --host 127.0.0.1 --port 8000
 curl -s http://127.0.0.1:8000/api/health
 curl -s "http://127.0.0.1:8000/api/candidates?provider=demo&symbols=000660"
 curl -s "http://127.0.0.1:8000/api/guide?provider=demo"
+curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
+  -H 'Content-Type: application/json' \
+  -d '{"provider":"demo","market":"ALL","min_market_cap_100m":500,"min_operating_profit_100m":50}'
 ```
 
 ## UI 동작
@@ -87,6 +109,10 @@ curl -s "http://127.0.0.1:8000/api/guide?provider=demo"
 - poll 간격: `REALTIME_POLL_SECONDS`
 - 중복 fetch cycle 방지
 - 후보 행 클릭: 상세·Entry/ATR 기본값 표시
+- 검색 범위: `KOSPI/KOSDAQ 전체` 또는 `직접 입력 종목`
+- 전체시장 필터: 시장, 최소 시가총액(억원), 최소 영업이익(억원), 표시 신호
+- `전체시장 새 검색`: 로컬/Oracle background scan을 시작하고 진행률 표시
+- 전체검색 중복 실행 방지, 일반 실시간 polling은 마지막 snapshot만 재조회
 - Vercel 상태: `localStorage`
 - `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가
 
@@ -98,7 +124,9 @@ worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지
 |---|---|---|
 | GET | `/` | UI |
 | GET | `/api/health` | provider chain, poll 설정 |
-| GET | `/api/candidates` | watchlist 후보 |
+| GET | `/api/candidates` | watchlist 또는 저장된 전체시장 후보 snapshot |
+| POST | `/api/full-market-scans` | 로컬/Oracle 전체시장 검색 시작 |
+| GET | `/api/full-market-scans/{id}` | 검색 진행률·결과 |
 | POST | `/api/scan` | 완료 일봉 직접 분석 |
 | GET/POST | `/api/guide` | 선택종목 행동 가이드 |
 | GET/POST | `/api/positions` | Oracle position state |
@@ -131,12 +159,17 @@ ENABLE_KRX_FALLBACK=0
 
 KIS 키 없이도 Naver 실패 시 Demo까지 fallback되어 화면이 열립니다. Vercel에는 worker, 영구 loop, WebSocket, SQLite 영속화를 두지 않습니다. Preview에서 `/`, `/api/health`, `/api/candidates?provider=demo`, `/api/guide?provider=demo`를 확인하세요.
 
+Vercel에서 전체시장 최신 결과까지 표시하려면 Oracle scanner 결과를 PostgreSQL/Supabase 등 외부 영속 store로 옮기고 `full_market_scans` repository adapter를 연결하세요. 기본 구현은 로컬/Oracle SQLite입니다.
+
 ## Oracle + KIS + Telegram
 
 ```bash
 cp .env.example .env
 # .env에 실제 값을 넣되 commit하지 않음
 docker compose up -d --build
+
+# 필요할 때 KOSPI/KOSDAQ 전체 1회 검색
+docker compose --profile full-scan run --rm turtle-scanner
 ```
 
 필수 운영 설정:
@@ -154,6 +187,8 @@ DB_PATH=./data/turtle.db
 
 `oracle.worker`는 기본 polling worker입니다. PREALERT, BREAKOUT, ADD, STOP, EXIT를 SQLite event key로 한 번만 Telegram 전송합니다. 메시지는 현재가, 조건가, next add, stop, exit, 제안 수량·금액, risk budget을 포함합니다.
 
+`oracle.scanner`는 시총·영업이익 필터 뒤 전체시장 신호를 계산하고 같은 dedup 규칙으로 Telegram을 전송합니다. `FULL_SCAN_INTERVAL_SECONDS=0`은 1회 실행이며, cron/Oracle scheduler로 장중 주기를 관리하는 방식을 권장합니다. 체결 Unit은 scanner/worker 어느 쪽도 자동 증가시키지 않습니다.
+
 포지션 영속화는 `app.state.PositionStateStore` 경계 뒤에 있습니다. 현재 `SqlitePositionStateStore`가 구현되어 있고 API/worker 모두 이 인터페이스를 사용하므로, PostgreSQL adapter는 전략·알림 코드를 바꾸지 않고 교체할 수 있습니다.
 
 `app.realtime.KisRealtimeWebSocketAdapter`는 KIS WebSocket approval key와 국내주식 실시간체결가 `H0STCNT0` 구독을 구현한 **읽기 전용 adapter skeleton**입니다. 재접속/backoff, 장 시작·종료, 구독 제한, 일봉 캐시 갱신을 운영 환경에 맞게 보강한 뒤 별도 event-driven runner에 연결하세요.
@@ -170,6 +205,9 @@ DB_PATH=./data/turtle.db
 - WAIT / ENTRY / ADD / STOP / EXIT
 - SQLite signal dedup / 수동 fill 확정
 - provider snapshot 일관성
+- 전체시장 시가총액 filter와 최신 확정 영업이익 선택
+- 재무 filter 선적용 후 시세 history 조회
+- 전체시장 background scan API와 snapshot 조회
 - Vercel 필수 route smoke
 
 ## 남은 운영 TODO
@@ -177,7 +215,8 @@ DB_PATH=./data/turtle.db
 - KIS 120/252 거래일 history cache와 pagination 운영 검증
 - KIS WebSocket reconnect/backoff 및 장중 soak test
 - PostgreSQL `PositionStateStore` adapter와 인증된 Oracle 관리 UI
-- 전체 KOSPI/KOSDAQ universe 수집·rate limit·배치 스케줄
+- Naver universe 응답 변경 감시와 KIS 호출 rate-limit 운영 튜닝
+- 전체검색 snapshot용 PostgreSQL adapter 및 Vercel read path
 - Telegram 운영 chat에서 end-to-end 알림 검증
 - 휴장일/관리종목/거래정지 데이터 정책
 
