@@ -1,0 +1,3 @@
+# Optional only. KRX fallback is best-effort and not required on Vercel.
+-r requirements.txt
+pykrx

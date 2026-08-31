@@ -1,0 +1,14 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+turtle.db
+.DS_Store
+.vercel/
+data/
+*.db
+.coverage
+htmlcov/
+work/
+CODEX_PROMPT*.md

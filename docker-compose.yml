@@ -1,0 +1,31 @@
+name: stock53-turtle
+
+services:
+  turtle-api:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  turtle-worker:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    command: ["python", "-m", "oracle.worker"]
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      turtle-api:
+        condition: service_healthy

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turtle Signal Guide</title>
+<style>
+:root{color-scheme:dark;--bg:#090d12;--panel:#111821;--panel2:#0e151d;--line:#263343;--text:#edf3f8;--muted:#92a4b7;--yellow:#facc15;--green:#22c55e;--red:#f05252;--blue:#38bdf8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Noto Sans KR",sans-serif}.wrap{max-width:1280px;margin:auto;padding:24px}.top{display:flex;gap:18px;justify-content:space-between;align-items:flex-end;margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.13em;color:var(--blue);font-weight:800}.title{font-size:32px;font-weight:850;margin:5px 0}.muted{color:var(--muted)}.tiny{font-size:12px}.status{border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:13px}.buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.button,select,input{appearance:none;background:#16202b;border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:10px}.button{cursor:pointer;font-weight:750}.button:hover{border-color:#55708d}.button:disabled{opacity:.55;cursor:not-allowed}.button.primary{background:#0d4c6b;border-color:#1679a7}.button.live{min-width:96px}.button.live.active{background:#15803d;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12)}.button.success{background:#14532d;border-color:#22c55e}.button.danger{border-color:#8b2525}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.card,.actionBox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}.hero{padding:20px}.signal{font-size:13px;font-weight:800}.big{font-size:28px;font-weight:850;margin:6px 0}.yellow{color:var(--yellow)}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.section{font-size:18px;font-weight:750;margin:26px 0 12px}.notice{padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px;line-height:1.55;margin-bottom:14px}.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:1000px;background:var(--panel)}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;white-space:nowrap}th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}tbody tr{cursor:pointer}tbody tr:hover{background:#16202b}.stage{font-weight:850}.error{color:var(--red)}.kv{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:10px 0;font-size:14px}.kv:first-child{border-top:0}.bar{height:8px;background:#202b37;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--blue)}.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}.field input,.field select{width:100%}.actionBox{background:var(--panel2)}.actionTitle{font-size:26px;font-weight:900}.tracked{border-color:#2563eb}.right{margin-left:auto}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:3px 3px 0 0;font-size:12px}.foot{margin:28px 0;color:var(--muted);font-size:13px;line-height:1.65}@media(max-width:720px){.top{align-items:flex-start;flex-direction:column}.title{font-size:27px}.right{margin-left:0}.wrap{padding:16px}#symbolsInput{min-width:100%!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">TURTLE SYSTEM 1 · READ-ONLY GUIDE</div>
+      <div class="title">터틀 트레이딩 시점</div>
+      <div class="muted">후보검색 → 1% PREALERT → 20D BREAKOUT → 0.5N 추매 → 2N STOP → 10D EXIT</div>
+    </div>
+    <div class="buttons">
+      <select id="provider" aria-label="데이터 공급자"><option value="auto">AUTO</option><option value="naver">NAVER</option><option value="krx">KRX</option><option value="demo">DEMO</option></select>
+      <button id="refreshBtn" class="button primary" type="button">↻ 새로고침</button>
+      <button id="liveBtn" class="button live" type="button">실시간</button>
+      <span id="scanState" class="status" aria-live="polite">대기</span>
+      <span id="health" class="status">API 확인중</span>
+    </div>
+  </header>
+
+  <div class="notice"><b>자동주문 없음.</b> Vercel의 실시간은 브라우저 polling입니다. Oracle 운영은 KIS 데이터를 우선 사용하며 Telegram 알림만 전송합니다. 체결된 Unit은 사용자가 <b>진입/추매 완료</b>로 직접 확정해야 합니다.</div>
+
+  <section class="grid">
+    <div class="card hero"><div class="signal yellow">PREALERT</div><div class="big">돌파가 1% 이내</div><div class="muted">신규 진입 준비</div></div>
+    <div class="card hero"><div class="signal green">BREAKOUT</div><div class="big">직전 20D High 돌파</div><div class="muted">어제 돌파 종목은 제외</div></div>
+    <div class="card hero"><div class="signal blue">POSITION GUIDE</div><div class="big">고정 N · 0.5N 추매</div><div class="muted">수량·STOP·10D EXIT</div></div>
+  </section>
+
+  <h2 class="section">후보 검색</h2>
+  <div class="buttons" style="margin-bottom:10px">
+    <input id="symbolsInput" style="min-width:390px" value="000660,005930,005380,012450,035420" placeholder="종목코드 쉼표 구분">
+    <span id="providerNote" class="muted tiny">Vercel은 소수 watchlist 탐색용입니다.</span>
+    <span id="lastUpdated" class="muted tiny right">마지막 조회: -</span>
+  </div>
+  <div class="tableWrap">
+    <table>
+      <thead><tr><th>상태</th><th>종목</th><th>현재가</th><th>20D 돌파가</th><th>거리</th><th>ATR20</th><th>Quality</th><th>Source</th></tr></thead>
+      <tbody id="candidateBody"><tr><td colspan="8" class="muted" style="text-align:center">새로고침을 눌러주세요.</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2 class="section">선택 후보 상세</h2>
+  <section class="grid">
+    <div class="card"><div class="muted" id="symbol">-</div><div id="stage" class="big">-</div><div id="distance" class="muted">-</div><div class="bar"><div id="scorebar" class="fill" style="width:0%"></div></div><div id="score" class="muted" style="margin-top:8px">-</div></div>
+    <div class="card"><div class="kv"><span>현재가</span><b id="current">-</b></div><div class="kv"><span>ENTRY / 20D</span><b id="entry">-</b></div><div class="kv"><span>ATR20 (N)</span><b id="atr">-</b></div><div class="kv"><span>10D EXIT</span><b id="exit10">-</b></div></div>
+    <div class="card"><div class="kv"><span>ADD #2</span><b id="add2">-</b></div><div class="kv"><span>ADD #3</span><b id="add3">-</b></div><div class="kv"><span>ADD #4</span><b id="add4">-</b></div><div class="kv"><span>초기 STOP</span><b id="stop" class="red">-</b></div></div>
+  </section>
+
+  <h2 class="section">Quality Filter <span class="muted tiny">원조 돌파 판정과 분리된 우선순위 지표</span></h2>
+  <section class="grid">
+    <div class="card"><div class="kv"><span>20일 평균거래대금</span><b id="qValue">-</b></div><div class="kv"><span>거래량 강도</span><b id="qVolume">-</b></div></div>
+    <div class="card"><div class="kv"><span>MA20 / MA60 / MA120</span><b id="qMa">-</b></div><div class="kv"><span>ATR%</span><b id="qAtr">-</b></div></div>
+    <div class="card"><div class="kv"><span>RS20 / RS60</span><b id="qRs">-</b></div><div class="kv"><span>52주 고가 거리</span><b id="qHigh">-</b></div></div>
+  </section>
+  <div id="reasons" class="notice" style="margin-top:12px">-</div>
+
+  <h2 class="section">내가 선택한 종목 · 매매 행동 가이드</h2>
+  <section id="trackingCard" class="card">
+    <div class="formGrid">
+      <div class="field"><label for="gSymbol">선택 종목코드</label><input id="gSymbol" value="000660"></div>
+      <div class="field"><label for="gEntry">최초 Entry 체결가</label><input id="gEntry" type="number" value="0"></div>
+      <div class="field"><label for="gAtr">Entry 당시 ATR20(N)</label><input id="gAtr" type="number" value="0"></div>
+      <div class="field"><label for="gUnits">현재 체결된 Unit</label><select id="gUnits"><option value="0" selected>0 · 아직 미진입</option><option value="1">1 Unit</option><option value="2">2 Units</option><option value="3">3 Units</option><option value="4">4 Units</option></select></div>
+      <div class="field"><label for="sizingMode">Sizing mode</label><select id="sizingMode"><option value="fixed">fixed · Unit 목표금액</option><option value="risk">risk · 계좌 위험한도</option></select></div>
+      <div class="field fixedField"><label for="unitAmount">Unit 목표금액(원)</label><input id="unitAmount" type="number" value="10000000" step="100000"></div>
+      <div class="field riskField" hidden><label for="accountEquity">Account equity(원)</label><input id="accountEquity" type="number" value="100000000" step="1000000"></div>
+      <div class="field riskField" hidden><label for="riskPct">Risk %</label><input id="riskPct" type="number" value="0.5" step="0.1"></div>
+    </div>
+    <div class="buttons" style="margin-top:12px">
+      <button id="guideBtn" class="button primary" type="button">매매 가이드 계산</button>
+      <button id="saveBtn" class="button" type="button">이 종목 추적 저장</button>
+      <button id="confirmFillBtn" class="button success" type="button">진입/추매 완료</button>
+      <button id="clearBtn" class="button danger" type="button">추적 해제</button>
+      <span id="trackingState" class="muted tiny">저장된 추적 종목 없음</span>
+    </div>
+  </section>
+
+  <section class="grid" style="margin-top:12px">
+    <div class="actionBox"><div class="muted">현재 전략 행동</div><div id="gAction" class="actionTitle">-</div><div id="gReason" class="muted" style="margin-top:8px">-</div></div>
+    <div class="card"><div class="kv"><span>현재가</span><b id="gCurrent">-</b></div><div class="kv"><span>다음 Unit 매수가</span><b id="gNextAdd">-</b></div><div class="kv"><span>공통 STOP</span><b id="gCommonStop" class="red">-</b></div><div class="kv"><span>10D EXIT</span><b id="gExit">-</b></div></div>
+    <div class="card"><div class="kv"><span>다음 Unit 수량</span><b id="gUnitQty">-</b></div><div class="kv"><span>예상 매수금액</span><b id="gUnitAmount">-</b></div><div class="kv"><span>현재 총수량</span><b id="gTotalQty">-</b></div><div class="kv"><span>Risk budget</span><b id="gRiskBudget">-</b></div></div>
+    <div class="card"><div class="kv"><span>Unit #1</span><b id="u1">-</b></div><div class="kv"><span>Unit #2</span><b id="u2">-</b></div><div class="kv"><span>Unit #3</span><b id="u3">-</b></div><div class="kv"><span>Unit #4</span><b id="u4">-</b></div></div>
+  </section>
+
+  <p class="foot">Risk 방식은 <code>equity × risk% ÷ (2N)</code>의 보수적 개인용 가이드이며, 원조 futures contract sizing 전체를 복제한다고 주장하지 않습니다. 고정 수익목표는 사용하지 않습니다.</p>
+</main>
+<script>
+const STORAGE_KEY='turtleTracking.v1';
+const fmt=n=>Number.isFinite(Number(n))?Math.round(Number(n)).toLocaleString('ko-KR')+'원':'-';
+const pct=n=>Number.isFinite(Number(n))?Number(n).toFixed(2)+'%':'-';
+const num=id=>Number(document.getElementById(id).value||0);
+const el=id=>document.getElementById(id);
+let selected=null,lastGuide=null,realtimeTimer=null,cycleBusy=false,realtimeMs=10000;
+
+function actionClass(action){return action==='ADD_NOW'||action==='ENTRY_NOW'?'green':action==='STOP_NOW'||action==='EXIT_NOW'?'red':action==='WAIT_ENTRY'?'yellow':'blue'}
+function stored(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
+function stageClass(stage){return stage==='BREAKOUT'?'green':stage==='PREALERT'?'yellow':stage==='ERROR'?'red':''}
+
+function showCandidate(data){
+  selected=data;
+  el('symbol').textContent=(data.name||'-')+' · '+(data.symbol||'-')+(data.source?' · '+data.source.toUpperCase():'');
+  el('stage').textContent=data.stage||'-';el('stage').className='big '+stageClass(data.stage);
+  el('distance').textContent=data.stage==='BREAKOUT'?'현재가가 직전 20일 고가를 돌파했습니다.':data.yesterday_broke?'어제 이미 돌파하여 신규 Unit #1에서 제외됩니다.':'돌파까지 '+pct(Math.max(0,Number(data.distance_pct)));
+  el('current').textContent=fmt(data.current);el('entry').textContent=fmt(data.breakout20);el('atr').textContent=fmt(data.atr20);el('exit10').textContent=fmt(data.exit10);
+  el('add2').textContent=fmt(data.add2);el('add3').textContent=fmt(data.add3);el('add4').textContent=fmt(data.add4);el('stop').textContent=fmt(data.initial_stop);
+  el('score').textContent='Quality Score '+(data.score??'-')+'/100';el('scorebar').style.width=Math.min(100,Number(data.score||0))+'%';
+  el('qValue').textContent=Number.isFinite(Number(data.avg_value20))?(Number(data.avg_value20)/100000000).toFixed(1)+'억원':'-';
+  el('qVolume').textContent=Number.isFinite(Number(data.volume_ratio))?Number(data.volume_ratio).toFixed(2)+'배':'-';
+  el('qMa').textContent=[data.ma20,data.ma60,data.ma120].map(x=>Number.isFinite(Number(x))?Math.round(Number(x)).toLocaleString('ko-KR'):'-').join(' / ');
+  el('qAtr').textContent=pct(data.atr_pct);el('qRs').textContent=pct(Number(data.rs20)*100)+' / '+pct(Number(data.rs60)*100);el('qHigh').textContent=pct(data.high52_distance_pct);
+  el('reasons').textContent=(data.reasons||[]).join(' · ')||data.error||'-';
+  const oldSymbol=el('gSymbol').dataset.last;
+  el('gSymbol').value=data.symbol||'';
+  if(!num('gEntry')||oldSymbol!==data.symbol){el('gEntry').value=Math.round(Number(data.breakout20||0));el('gAtr').value=Math.round(Number(data.atr20||0))}
+  el('gSymbol').dataset.last=data.symbol||'';
+}
+
+function appendCandidateRow(body,item){
+  const row=document.createElement('tr');
+  const values=item.stage==='ERROR'
+    ?[{text:'ERROR',cls:'error'},{text:item.name||item.symbol},{text:item.error||'조회 실패',span:6,cls:'error'}]
+    :[{text:item.stage,cls:'stage '+stageClass(item.stage)},{text:(item.name||item.symbol)+' · '+item.symbol},{text:fmt(item.current)},{text:fmt(item.breakout20)},{text:pct(item.distance_pct)},{text:fmt(item.atr20)},{text:String(item.score)},{text:(item.source||'').toUpperCase()}];
+  values.forEach(value=>{const cell=document.createElement('td');cell.textContent=value.text;cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;row.appendChild(cell)});
+  if(item.stage!=='ERROR')row.addEventListener('click',()=>showCandidate(item));
+  body.appendChild(row);
+}
+
+async function loadCandidates(){
+  const provider=el('provider').value,symbols=el('symbolsInput').value.trim();
+  const response=await fetch('/api/candidates?provider='+encodeURIComponent(provider)+'&symbols='+encodeURIComponent(symbols));
+  const data=await response.json();if(!response.ok)throw new Error(data.detail||'candidate fetch failed');
+  el('providerNote').textContent='Provider: '+data.provider+' · '+data.note;
+  const body=el('candidateBody');body.replaceChildren();
+  (data.items||[]).forEach(item=>appendCandidateRow(body,item));
+  if(!(data.items||[]).length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=8;cell.textContent='후보가 없습니다.';cell.className='muted';cell.style.textAlign='center';row.appendChild(cell);body.appendChild(row)}
+  const current=(data.items||[]).find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||(data.items||[]).find(item=>item.stage!=='ERROR');
+  if(current)showCandidate(current);
+}
+
+function guidePayload(){
+  const saved=stored();
+  return {symbol:el('gSymbol').value.trim(),entry_price:num('gEntry'),n_at_entry:num('gAtr')||null,filled_units:Number(el('gUnits').value),sizing_mode:el('sizingMode').value,fixed_unit_amount:num('unitAmount'),account_equity:num('accountEquity'),risk_pct:num('riskPct'),previous_stop:saved&&saved.symbol===el('gSymbol').value.trim()?Number(saved.previous_stop||0)||null:null,provider:el('provider').value};
+}
+
+async function calculateGuide(showErrors=true){
+  const payload=guidePayload();if(!payload.symbol||!payload.entry_price)return null;
+  try{
+    const response=await fetch('/api/guide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await response.json();if(!response.ok)throw new Error(data.detail||'guide failed');showGuide(data);return data;
+  }catch(error){if(showErrors)alert('가이드 계산 실패: '+error.message);throw error}
+}
+
+function unitText(data,index){const levels=data.add_levels||[],qty=data.unit_quantities||[];return levels[index]?fmt(levels[index])+' × '+(qty[index]??0).toLocaleString('ko-KR')+'주':'-'}
+function showGuide(data){
+  lastGuide=data;el('gAction').textContent=data.action||'-';el('gAction').className='actionTitle '+actionClass(data.action);
+  el('gReason').textContent=(data.reasons||[]).join(' · ');el('gCurrent').textContent=fmt(data.current);el('gNextAdd').textContent=data.next_add_price?fmt(data.next_add_price):'4 Units 완료';
+  el('gCommonStop').textContent=fmt(data.common_stop);el('gExit').textContent=fmt(data.exit10);el('gUnitQty').textContent=(data.next_unit_qty??0).toLocaleString('ko-KR')+'주';
+  el('gUnitAmount').textContent=fmt(data.next_unit_amount);el('gTotalQty').textContent=(data.total_qty??0).toLocaleString('ko-KR')+'주';el('gRiskBudget').textContent=fmt(data.risk_budget);
+  for(let i=0;i<4;i++)el('u'+(i+1)).textContent=unitText(data,i);
+  const saved=stored();if(saved&&saved.symbol===data.symbol){saved.previous_stop=Math.max(Number(saved.previous_stop||0),Number(data.common_stop||0));localStorage.setItem(STORAGE_KEY,JSON.stringify(saved))}
+}
+
+async function runCycle({showErrors=false}={}){
+  if(cycleBusy)return;cycleBusy=true;
+  el('refreshBtn').disabled=true;el('refreshBtn').textContent='↻ 조회중...';el('scanState').textContent=realtimeTimer?'검색중':'조회중';
+  try{
+    const payload=guidePayload(),tasks=[loadCandidates()];if(payload.symbol&&payload.entry_price)tasks.push(calculateGuide(showErrors));
+    const results=await Promise.allSettled(tasks),candidateResult=results[0];
+    if(candidateResult.status==='rejected'){
+      const body=el('candidateBody'),row=document.createElement('tr'),cell=document.createElement('td');body.replaceChildren();cell.colSpan=8;cell.className='error';cell.style.textAlign='center';cell.textContent='후보 조회 실패: '+String(candidateResult.reason?.message||candidateResult.reason);row.appendChild(cell);body.appendChild(row);
+    }
+    if(results[1]?.status==='rejected')el('gReason').textContent='가이드 조회 실패: '+String(results[1].reason?.message||results[1].reason);
+    if(results.some(result=>result.status==='fulfilled'))el('lastUpdated').textContent='마지막 조회: '+new Date().toLocaleString('ko-KR');
+  }finally{
+    cycleBusy=false;el('refreshBtn').disabled=false;el('refreshBtn').textContent='↻ 새로고침';el('scanState').textContent=realtimeTimer?'검색중':'대기';
+  }
+}
+
+function toggleRealtime(){
+  if(realtimeTimer){clearInterval(realtimeTimer);realtimeTimer=null;el('liveBtn').classList.remove('active');el('liveBtn').textContent='실시간';el('scanState').textContent='대기';return}
+  el('liveBtn').classList.add('active');el('liveBtn').textContent='● 검색중';el('scanState').textContent='검색중';runCycle();realtimeTimer=setInterval(()=>runCycle(),realtimeMs);
+}
+
+function updateSizingVisibility(){const risk=el('sizingMode').value==='risk';document.querySelectorAll('.fixedField').forEach(node=>node.hidden=risk);document.querySelectorAll('.riskField').forEach(node=>node.hidden=!risk)}
+function saveTracking(){
+  const payload=guidePayload();if(!payload.symbol||!payload.entry_price||!payload.n_at_entry){alert('종목코드, Entry 체결가, Entry 당시 ATR을 입력하세요.');return}
+  payload.previous_stop=Math.max(Number(payload.previous_stop||0),Number(lastGuide?.common_stop||0));localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));el('trackingState').textContent='추적 저장됨 · '+payload.symbol;el('trackingCard').classList.add('tracked');
+}
+function clearTracking(){localStorage.removeItem(STORAGE_KEY);lastGuide=null;el('trackingState').textContent='저장된 추적 종목 없음';el('trackingCard').classList.remove('tracked')}
+async function confirmFill(){
+  const units=Number(el('gUnits').value);if(units>=4){alert('이미 4 Units가 모두 확정되었습니다.');return}
+  const label=units===0?'Unit #1 진입':'Unit #'+(units+1)+' 추매';
+  if(!confirm(label+' 체결을 실제로 완료했습니까? 이 확인 전에는 Unit 수가 자동 증가하지 않습니다.'))return;
+  el('gUnits').value=String(units+1);saveTracking();await calculateGuide(true);
+}
+function restoreTracking(){
+  const payload=stored();if(!payload)return false;el('provider').value=payload.provider||'auto';el('gSymbol').value=payload.symbol||'';el('gEntry').value=payload.entry_price||0;el('gAtr').value=payload.n_at_entry||0;el('gUnits').value=String(payload.filled_units??0);el('sizingMode').value=payload.sizing_mode||'fixed';el('unitAmount').value=payload.fixed_unit_amount||10000000;el('accountEquity').value=payload.account_equity||100000000;el('riskPct').value=payload.risk_pct??0.5;el('trackingState').textContent='추적 저장됨 · '+payload.symbol;el('trackingCard').classList.add('tracked');updateSizingVisibility();calculateGuide(false).catch(()=>{});return true;
+}
+
+el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('liveBtn').addEventListener('click',toggleRealtime);el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',saveTracking);el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',clearTracking);el('sizingMode').addEventListener('change',updateSizingVisibility);
+fetch('/api/health').then(response=>response.json()).then(data=>{el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';realtimeMs=Math.max(3000,Number(data.realtime_poll_seconds||10)*1000)}).catch(()=>el('health').textContent='API 미연결');
+if(!restoreTracking())fetch('/api/sample?stage=prealert').then(response=>response.json()).then(showCandidate).catch(()=>{});
+</script>
+</body>
+</html>

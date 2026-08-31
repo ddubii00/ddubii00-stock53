@@ -1,0 +1,80 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+import pytest
+
+from app.strategy import Bar, analyze, atr
+
+
+def fresh_bars(n: int = 130):
+    out = []
+    for i in range(n):
+        c = 100 + i * 0.2
+        out.append(Bar(high=c + 1, low=c - 1, close=c, volume=1000, value=20_000_000_000))
+    for i in range(-21, 0):
+        out[i] = Bar(high=150, low=145, close=147, volume=1000, value=20_000_000_000)
+    out[-1] = Bar(high=149, low=145, close=147, volume=1000, value=20_000_000_000)
+    return out
+
+
+def test_prealert():
+    r = analyze(fresh_bars(), 149.0, 1300, 0, min_score=0)
+    assert r.stage == "PREALERT"
+    assert r.breakout20 == 150
+    assert r.distance_pct == pytest.approx(2 / 3)
+
+
+def test_prealert_includes_exactly_one_percent_below():
+    r = analyze(fresh_bars(), 148.5, 1300, min_score=0)
+    assert r.distance_pct == pytest.approx(1.0)
+    assert r.stage == "PREALERT"
+
+
+def test_breakout():
+    r = analyze(fresh_bars(), 150.5, 1300, 0, min_score=0)
+    assert r.stage == "BREAKOUT"
+
+
+def test_quality_does_not_block_turtle_breakout():
+    b = fresh_bars()
+    b = [Bar(x.high, x.low, x.close, x.volume, 0) for x in b]
+    r = analyze(b, 150.5, 100, 0, min_score=100)
+    assert r.hard_pass is False
+    assert r.stage == "BREAKOUT"
+
+
+def test_yesterday_breakout_is_not_fresh_signal():
+    b = fresh_bars()
+    b[-1] = Bar(high=151, low=145, close=150, volume=1000, value=20_000_000_000)
+    r = analyze(b, 151.5, 1300, 0, min_score=0)
+    assert r.yesterday_broke is True
+    assert r.stage == "FILTERED"
+
+
+def test_today_is_not_in_breakout_window():
+    b = fresh_bars()
+    r = analyze(b, 200.0, 1300, 0, min_score=0)
+    assert r.breakout20 == 150
+    assert r.stage == "BREAKOUT"
+
+
+def test_dated_today_bar_is_rejected():
+    b = fresh_bars()
+    today = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d")
+    b[-1] = Bar(high=149, low=145, close=147, volume=1000, value=20_000_000_000, date=today)
+    with pytest.raises(ValueError, match="completed sessions"):
+        analyze(b, 149, 1300, min_score=0)
+
+
+def test_atr20_uses_true_range_from_completed_bars():
+    b = [Bar(high=110, low=90, close=100)]
+    b.extend(Bar(high=112, low=92, close=102) for _ in range(20))
+    assert atr(b, 20) == 20
+
+
+def test_exit10_is_previous_ten_lows():
+    b = fresh_bars()
+    for index in range(-10, 0):
+        b[index] = Bar(high=150, low=140 + abs(index), close=147, volume=1000, value=20_000_000_000)
+    r = analyze(b, 149, 1300, min_score=0)
+    assert r.exit10 == 141
