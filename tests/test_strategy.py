@@ -78,3 +78,13 @@ def test_exit10_is_previous_ten_lows():
         b[index] = Bar(high=150, low=140 + abs(index), close=147, volume=1000, value=20_000_000_000)
     r = analyze(b, 149, 1300, min_score=0)
     assert r.exit10 == 141
+
+
+def test_avg_value10_uses_only_last_ten_completed_bars():
+    b = fresh_bars()
+    for index in range(-20, -10):
+        b[index] = Bar(high=150, low=145, close=147, volume=1000, value=1)
+    for index in range(-10, 0):
+        b[index] = Bar(high=150, low=145, close=147, volume=1000, value=60_000_000_000)
+    r = analyze(b, 149, 1300, min_score=0)
+    assert r.avg_value10 == 60_000_000_000

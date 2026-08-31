@@ -33,11 +33,24 @@ class MarketSnapshot:
     quote: Quote
 
 
+@dataclass(frozen=True)
+class InvestorFlow:
+    symbol: str
+    date: str
+    foreign_net_qty: float
+    institution_net_qty: float
+    foreign_net_amount: float
+    institution_net_amount: float
+    source: str
+    estimated_amount: bool = False
+
+
 class MarketDataProvider(Protocol):
     name: str
 
     def get_daily_ohlcv(self, symbol: str, count: int = 260) -> list[Bar]: ...
     def get_current_price(self, symbol: str) -> Quote: ...
+    def get_investor_flow(self, symbol: str) -> InvestorFlow: ...
 
 
 def _today_kst() -> str:
@@ -68,6 +81,28 @@ def get_market_snapshot(provider: MarketDataProvider, symbol: str, count: int = 
     bars = provider.get_daily_ohlcv(symbol, count)
     quote = provider.get_current_price(symbol)
     return MarketSnapshot(bars=bars, quote=quote)
+
+
+def validate_snapshot_price_scale(
+    snapshot: MarketSnapshot, max_abs_change_pct: float = 35.0
+) -> float:
+    """Return quote change vs D-1, rejecting unadjusted corporate-action gaps.
+
+    Korean cash equities cannot normally move beyond the daily price limit.
+    A larger quote/history gap usually means a split or consolidation has not
+    yet been reflected in the completed-history series. Using that mismatch
+    would create a false Turtle breakout and invalid ATR/stop levels.
+    """
+
+    if not snapshot.bars or snapshot.bars[-1].close <= 0:
+        raise RuntimeError("completed price history has no valid previous close")
+    change_pct = (snapshot.quote.price / snapshot.bars[-1].close - 1.0) * 100.0
+    if abs(change_pct) > max_abs_change_pct:
+        raise RuntimeError(
+            f"quote/history scale mismatch ({change_pct:.2f}% vs D-1); "
+            "possible split/consolidation, signal skipped"
+        )
+    return change_pct
 
 
 class DemoMarketDataProvider:
@@ -128,6 +163,21 @@ class DemoMarketDataProvider:
         price = breakout * (1.002 if bucket == 0 else 0.994 if bucket == 1 else 0.97)
         return Quote(symbol=symbol, price=price, volume=1_100_000, source=self.name)
 
+    def get_investor_flow(self, symbol: str) -> InvestorFlow:
+        price = self.get_current_price(symbol).price
+        bucket = sum(int(ch) for ch in symbol if ch.isdigit()) % 4
+        foreign_qty = (bucket - 1) * 15_000
+        institution_qty = (2 - bucket) * 12_000
+        return InvestorFlow(
+            symbol=symbol,
+            date=_today_kst(),
+            foreign_net_qty=foreign_qty,
+            institution_net_qty=institution_qty,
+            foreign_net_amount=foreign_qty * price,
+            institution_net_amount=institution_qty * price,
+            source=self.name,
+        )
+
 
 class NaverMarketDataProvider:
     """Best-effort public data for Vercel UI/exploration, never Oracle truth."""
@@ -135,6 +185,7 @@ class NaverMarketDataProvider:
     name = "naver"
     chart_url = "https://fchart.stock.naver.com/sise.nhn"
     quote_url = "https://polling.finance.naver.com/api/realtime"
+    investor_url = "https://m.stock.naver.com/api/stock/{symbol}/trend"
 
     def __init__(self, timeout: float = 7.0):
         self.timeout = timeout
@@ -204,11 +255,48 @@ class NaverMarketDataProvider:
             row = response.json()["result"]["areas"][0]["datas"][0]
             price = _number(row.get("nv") or row.get("closePrice") or row.get("nowVal"))
             volume = _number(row.get("aq") or row.get("accQuant") or 0)
+            # Naver exposes the tradable NXT pre/after-market quote separately.
+            # Prefer it only while that session is actually open; otherwise `nv`
+            # remains the regular-market live quote (or the latest close).
+            nxt = row.get("nxtOverMarketPriceInfo") or {}
+            nxt_price = _number(nxt.get("overPrice"))
+            nxt_trading = (
+                str((nxt.get("tradeStopType") or {}).get("name", "")).upper() == "TRADING"
+                and str(nxt.get("tradableStatus", "")).lower() == "tradable"
+            )
+            if nxt_trading and nxt_price > 0:
+                price = nxt_price
+                volume = _number(nxt.get("accumulatedTradingVolumeRaw") or volume)
         except Exception as exc:
             raise RuntimeError(f"Unexpected Naver quote response for {symbol}") from exc
         if price <= 0:
             raise RuntimeError(f"Naver returned an invalid quote for {symbol}")
         return Quote(symbol=symbol, price=price, volume=volume, source=self.name)
+
+    def get_investor_flow(self, symbol: str) -> InvestorFlow:
+        response = self._session().get(
+            self.investor_url.format(symbol=symbol), timeout=self.timeout
+        )
+        response.raise_for_status()
+        rows = response.json()
+        if not isinstance(rows, list) or not rows:
+            raise RuntimeError(f"Naver returned no investor flow for {symbol}")
+        row = max(rows, key=lambda item: str(item.get("bizdate") or ""))
+        foreign_qty = _number(row.get("foreignerPureBuyQuant"))
+        institution_qty = _number(row.get("organPureBuyQuant"))
+        close = _number(row.get("closePrice"))
+        if close <= 0:
+            close = self.get_current_price(symbol).price
+        return InvestorFlow(
+            symbol=symbol,
+            date=str(row.get("bizdate") or ""),
+            foreign_net_qty=foreign_qty,
+            institution_net_qty=institution_qty,
+            foreign_net_amount=foreign_qty * close,
+            institution_net_amount=institution_qty * close,
+            source=self.name,
+            estimated_amount=True,
+        )
 
 
 class KrxMarketDataProvider:
@@ -257,6 +345,29 @@ class KrxMarketDataProvider:
             raise RuntimeError(f"KRX returned no quote for {symbol}")
         row = frame.iloc[-1]
         return Quote(symbol=symbol, price=_number(row["종가"]), volume=_number(row["거래량"]), source=self.name)
+
+    def get_investor_flow(self, symbol: str) -> InvestorFlow:
+        end = _today_kst_date()
+        start = end - timedelta(days=10)
+        frame = self.stock.get_market_trading_value_by_date(
+            start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), symbol
+        )
+        if frame.empty:
+            raise RuntimeError(f"KRX returned no investor flow for {symbol}")
+        row = frame.iloc[-1]
+        index = frame.index[-1]
+        session_date = index.strftime("%Y%m%d") if hasattr(index, "strftime") else str(index)
+        foreign = _number(row.get("외국인합계", row.get("외국인", 0)))
+        institution = _number(row.get("기관합계", 0))
+        return InvestorFlow(
+            symbol=symbol,
+            date=session_date,
+            foreign_net_qty=0,
+            institution_net_qty=0,
+            foreign_net_amount=foreign,
+            institution_net_amount=institution,
+            source=self.name,
+        )
 
 
 class KisMarketDataProvider:
@@ -364,6 +475,31 @@ class KisMarketDataProvider:
             )
         return bars
 
+    def get_investor_flow(self, symbol: str) -> InvestorFlow:
+        response = self.session.get(
+            f"{self.base_url}/uapi/domestic-stock/v1/quotations/inquire-investor",
+            headers=self._headers("FHKST01010900"),
+            params={"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if str(payload.get("rt_cd", "0")) != "0":
+            raise RuntimeError(payload.get("msg1", "KIS investor flow error"))
+        rows = payload.get("output") or []
+        if not rows:
+            raise RuntimeError(f"KIS returned no investor flow for {symbol}")
+        row = max(rows, key=lambda item: str(item.get("stck_bsop_date") or ""))
+        return InvestorFlow(
+            symbol=symbol,
+            date=str(row.get("stck_bsop_date") or ""),
+            foreign_net_qty=_number(row.get("frgn_ntby_qty")),
+            institution_net_qty=_number(row.get("orgn_ntby_qty")),
+            foreign_net_amount=_number(row.get("frgn_ntby_tr_pbmn")),
+            institution_net_amount=_number(row.get("orgn_ntby_tr_pbmn")),
+            source=self.name,
+        )
+
 
 class FallbackMarketDataProvider:
     def __init__(self, providers: list[MarketDataProvider]):
@@ -386,6 +522,9 @@ class FallbackMarketDataProvider:
 
     def get_current_price(self, symbol: str) -> Quote:
         return self._call("get_current_price", symbol)
+
+    def get_investor_flow(self, symbol: str) -> InvestorFlow:
+        return self._call("get_investor_flow", symbol)
 
     def get_snapshot(self, symbol: str, count: int = 260) -> MarketSnapshot:
         errors: list[str] = []

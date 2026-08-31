@@ -44,6 +44,7 @@ def init_db() -> None:
               fixed_unit_amount REAL NOT NULL DEFAULT 10000000,
               account_equity REAL NOT NULL DEFAULT 100000000,
               risk_pct REAL NOT NULL DEFAULT 0.5,
+              exit_strategy TEXT NOT NULL DEFAULT 'turtle',
               common_stop REAL NOT NULL DEFAULT 0,
               status TEXT NOT NULL DEFAULT 'ACTIVE',
               updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -73,6 +74,7 @@ def init_db() -> None:
               min_market_cap_100m REAL NOT NULL,
               min_operating_profit_100m REAL NOT NULL,
               signal_mode TEXT NOT NULL,
+              options_json TEXT NOT NULL DEFAULT '{}',
               processed INTEGER NOT NULL DEFAULT 0,
               total INTEGER NOT NULL DEFAULT 0,
               universe_count INTEGER NOT NULL DEFAULT 0,
@@ -96,6 +98,17 @@ def init_db() -> None:
             columns = {row[1] for row in conn.execute("PRAGMA table_info(positions)").fetchall()}
             if "common_stop" not in columns:
                 conn.execute("ALTER TABLE positions ADD COLUMN common_stop REAL NOT NULL DEFAULT 0")
+            if "exit_strategy" not in columns:
+                conn.execute(
+                    "ALTER TABLE positions ADD COLUMN exit_strategy TEXT NOT NULL DEFAULT 'turtle'"
+                )
+            scan_columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(full_market_scans)").fetchall()
+            }
+            if "options_json" not in scan_columns:
+                conn.execute(
+                    "ALTER TABLE full_market_scans ADD COLUMN options_json TEXT NOT NULL DEFAULT '{}'"
+                )
             conn.commit()
         _INITIALIZED_PATHS.add(resolved)
 
@@ -133,8 +146,8 @@ def save_position(payload: dict) -> None:
             """
             INSERT INTO positions(
               symbol,name,entry_price,n_at_entry,filled_units,sizing_mode,
-              fixed_unit_amount,account_equity,risk_pct,common_stop,status,updated_at
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,'ACTIVE',CURRENT_TIMESTAMP)
+              fixed_unit_amount,account_equity,risk_pct,exit_strategy,common_stop,status,updated_at
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',CURRENT_TIMESTAMP)
             ON CONFLICT(symbol) DO UPDATE SET
               name=excluded.name,
               entry_price=excluded.entry_price,
@@ -144,6 +157,7 @@ def save_position(payload: dict) -> None:
               fixed_unit_amount=excluded.fixed_unit_amount,
               account_equity=excluded.account_equity,
               risk_pct=excluded.risk_pct,
+              exit_strategy=excluded.exit_strategy,
               common_stop=MAX(positions.common_stop, excluded.common_stop),
               status='ACTIVE',
               updated_at=CURRENT_TIMESTAMP
@@ -158,6 +172,7 @@ def save_position(payload: dict) -> None:
                 payload.get("fixed_unit_amount", 10_000_000),
                 payload.get("account_equity", 100_000_000),
                 payload.get("risk_pct", 0.5),
+                payload.get("exit_strategy", "turtle"),
                 common_stop,
             ),
         )
@@ -298,8 +313,8 @@ def create_full_market_scan(payload: dict) -> int:
             """
             INSERT INTO full_market_scans(
               status,phase,provider,market,min_market_cap_100m,
-              min_operating_profit_100m,signal_mode,started_at,message
-            ) VALUES('RUNNING','universe',?,?,?,?,?,?,?)
+              min_operating_profit_100m,signal_mode,options_json,started_at,message
+            ) VALUES('RUNNING','universe',?,?,?,?,?,?,?,?)
             """,
             (
                 payload["provider"],
@@ -307,6 +322,7 @@ def create_full_market_scan(payload: dict) -> int:
                 float(payload["min_market_cap_100m"]),
                 float(payload["min_operating_profit_100m"]),
                 payload["signal_mode"],
+                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
                 now,
                 "전체시장 종목목록 조회중",
             ),
@@ -391,6 +407,10 @@ def get_full_market_scan(scan_id: int, include_items: bool = True) -> dict | Non
         if row is None:
             return None
         result = dict(row)
+        try:
+            result["options"] = json.loads(result.get("options_json") or "{}")
+        except json.JSONDecodeError:
+            result["options"] = {}
         result["items"] = []
         if include_items and result["status"] == "COMPLETED":
             item_rows = conn.execute(

@@ -26,6 +26,13 @@ class PositionGuide:
     next_unit_amount: float
     common_stop: float
     exit10: float
+    ma5: float
+    ma10: float
+    exit_strategy: str
+    sell_action: str
+    sell_price: float | None
+    sell_pct: int
+    sell_reasons: list[str]
     action: str
     action_price: float | None
     action_qty: int
@@ -84,6 +91,7 @@ def build_position_guide(
     account_equity: float = 100_000_000,
     risk_pct: float = 0.5,
     previous_stop: float | None = None,
+    exit_strategy: str = "turtle",
 ) -> PositionGuide:
     if len(bars) < 21:
         raise ValueError("Need at least 21 completed bars")
@@ -91,6 +99,9 @@ def build_position_guide(
         raise ValueError("entry_price and current must be positive")
     if not 0 <= filled_units <= 4:
         raise ValueError("filled_units must be 0..4")
+    exit_mode = exit_strategy.strip().lower()
+    if exit_mode not in {"turtle", "ma_staged"}:
+        raise ValueError("exit_strategy must be turtle or ma_staged")
 
     n = float(n_at_entry or atr(bars, 20))
     if n <= 0:
@@ -122,6 +133,8 @@ def build_position_guide(
     calculated_stop = last_filled_price - 2.0 * n
     common_stop = max(calculated_stop, float(previous_stop or calculated_stop))
     exit10 = min(b.low for b in bars[-10:])
+    ma5 = sum(b.close for b in bars[-5:]) / 5.0
+    ma10 = sum(b.close for b in bars[-10:]) / 10.0
 
     reasons: list[str] = []
     action = "HOLD"
@@ -167,6 +180,37 @@ def build_position_guide(
     avg_fill = total_cost / total_qty if total_qty else entry_price
     pnl_pct = (current / avg_fill - 1.0) * 100.0 if avg_fill else 0.0
 
+    sell_action = "SELL_WAIT"
+    sell_price: float | None = None
+    sell_pct = 0
+    sell_reasons: list[str] = []
+    if filled_units == 0:
+        sell_reasons.append("진입 확정 전: 매도 가이드 비활성")
+    elif current <= common_stop:
+        sell_action = "STOP_NOW"
+        sell_price = common_stop
+        sell_pct = 100
+        sell_reasons.append("보호손절 우선: 최근 체결 Unit - 2N 이탈")
+    elif current <= exit10:
+        sell_action = "EXIT_NOW"
+        sell_price = exit10
+        sell_pct = 100
+        sell_reasons.append("정통 System 1: 직전 10거래일 최저가 이탈, 전량 청산")
+    elif exit_mode == "ma_staged" and current <= ma10:
+        sell_action = "REDUCE_2"
+        sell_price = ma10
+        sell_pct = 100
+        sell_reasons.append("MA10 이탈: 1차 매도 후 잔여 포지션 정리 검토")
+    elif exit_mode == "ma_staged" and current <= ma5:
+        sell_action = "REDUCE_1"
+        sell_price = ma5
+        sell_pct = 50
+        sell_reasons.append("MA5 이탈: 1차 50% 분할매도 검토")
+    elif exit_mode == "ma_staged":
+        sell_reasons.append("MA5·MA10 위: 보유, 10D Low 전량청산선 추적")
+    else:
+        sell_reasons.append("정통 Turtle: 고정 익절 없이 10D Low 전량청산선 추적")
+
     return PositionGuide(
         symbol=symbol,
         current=current,
@@ -185,6 +229,13 @@ def build_position_guide(
         next_unit_amount=next_unit_amount,
         common_stop=common_stop,
         exit10=exit10,
+        ma5=ma5,
+        ma10=ma10,
+        exit_strategy=exit_mode,
+        sell_action=sell_action,
+        sell_price=sell_price,
+        sell_pct=sell_pct,
+        sell_reasons=sell_reasons,
         action=action,
         action_price=action_price,
         action_qty=action_qty,

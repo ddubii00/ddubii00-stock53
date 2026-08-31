@@ -1,7 +1,15 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.providers import FallbackMarketDataProvider, MarketSnapshot, Quote, _completed, get_market_snapshot
+from app.providers import (
+    FallbackMarketDataProvider,
+    MarketSnapshot,
+    NaverMarketDataProvider,
+    Quote,
+    _completed,
+    get_market_snapshot,
+    validate_snapshot_price_scale,
+)
 from app.strategy import Bar
 
 
@@ -39,3 +47,74 @@ def test_provider_removes_todays_partial_daily_bar():
     completed = _completed(bars, 10)
     assert len(completed) == 1
     assert completed[0].date == "20260828"
+
+
+class JsonResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self.payload
+
+
+class QuoteSession:
+    def __init__(self, row):
+        self.row = row
+
+    def get(self, *args, **kwargs):
+        return JsonResponse({"result": {"areas": [{"datas": [self.row]}]}})
+
+
+def test_naver_quote_prefers_open_nxt_session_price(monkeypatch):
+    provider = NaverMarketDataProvider()
+    session = QuoteSession(
+        {
+            "nv": 1_674_000,
+            "aq": 0,
+            "nxtOverMarketPriceInfo": {
+                "overPrice": "1,670,000",
+                "accumulatedTradingVolumeRaw": "84351",
+                "tradeStopType": {"name": "TRADING"},
+                "tradableStatus": "tradable",
+            },
+        }
+    )
+    monkeypatch.setattr(provider, "_session", lambda: session)
+    quote = provider.get_current_price("000660")
+    assert quote.price == 1_670_000
+    assert quote.volume == 84_351
+
+
+def test_naver_quote_uses_regular_price_when_nxt_is_closed(monkeypatch):
+    provider = NaverMarketDataProvider()
+    session = QuoteSession(
+        {
+            "nv": 1_674_000,
+            "aq": 123,
+            "nxtOverMarketPriceInfo": {
+                "overPrice": "1,670,000",
+                "tradeStopType": {"name": "CLOSING"},
+                "tradableStatus": "notTradable",
+            },
+        }
+    )
+    monkeypatch.setattr(provider, "_session", lambda: session)
+    quote = provider.get_current_price("000660")
+    assert quote.price == 1_674_000
+    assert quote.volume == 123
+
+
+def test_quote_history_scale_mismatch_is_rejected():
+    snapshot = MarketSnapshot(
+        bars=[Bar(high=820, low=780, close=783)] * 61,
+        quote=Quote(symbol="011370", price=3_915, source="naver"),
+    )
+    try:
+        validate_snapshot_price_scale(snapshot)
+    except RuntimeError as exc:
+        assert "possible split/consolidation" in str(exc)
+    else:
+        raise AssertionError("corporate-action price scale mismatch must be rejected")

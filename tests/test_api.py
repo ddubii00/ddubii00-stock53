@@ -34,6 +34,23 @@ def test_guide_route_returns_position_action():
     assert response.json()["action"] in {"HOLD", "ADD_NOW", "STOP_NOW", "EXIT_NOW"}
 
 
+def test_guide_route_returns_selected_sell_strategy():
+    response = client.post(
+        "/api/guide",
+        json={
+            "symbol": "000660",
+            "entry_price": 150_000,
+            "n_at_entry": 5_000,
+            "filled_units": 1,
+            "exit_strategy": "ma_staged",
+            "provider": "demo",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["exit_strategy"] == "ma_staged"
+    assert response.json()["sell_action"] in {"SELL_WAIT", "REDUCE_1", "REDUCE_2", "STOP_NOW", "EXIT_NOW"}
+
+
 def test_get_guide_route_is_deploy_smoke_test():
     response = client.get("/api/guide", params={"provider": "demo"})
     assert response.status_code == 200

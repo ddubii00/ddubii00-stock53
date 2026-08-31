@@ -6,7 +6,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Callable
 
-from app.providers import MarketDataProvider, build_market_data_provider, get_market_snapshot
+from app.providers import (
+    MarketDataProvider,
+    build_market_data_provider,
+    get_market_snapshot,
+    validate_snapshot_price_scale,
+)
 from app.store import (
     create_full_market_scan,
     fail_full_market_scan,
@@ -30,6 +35,14 @@ class FullScanConfig:
     min_market_cap_100m: float = 500.0
     min_operating_profit_100m: float = 50.0
     signal_mode: str = "prealert"
+    prealert_pct: float = 1.0
+    avg_value10_filter_enabled: bool = True
+    min_avg_value10_100m: float = 500.0
+    investor_filter_enabled: bool = False
+    investor_mode: str = "either"
+    min_investor_net_buy_100m: float = 0.0
+    today_change_filter_enabled: bool = False
+    min_today_change_pct: float = 5.0
 
     def validate(self) -> "FullScanConfig":
         market = self.market.upper()
@@ -37,14 +50,32 @@ class FullScanConfig:
             raise ValueError("market must be ALL, KOSPI, or KOSDAQ")
         if self.min_market_cap_100m < 0:
             raise ValueError("min market cap cannot be negative")
-        if self.signal_mode not in {"prealert", "actionable"}:
-            raise ValueError("signal_mode must be prealert or actionable")
+        if self.signal_mode not in {"prealert", "breakout", "actionable"}:
+            raise ValueError("signal_mode must be prealert, breakout, or actionable")
+        if self.prealert_pct < 0:
+            raise ValueError("prealert_pct cannot be negative")
+        if self.min_avg_value10_100m < 0:
+            raise ValueError("minimum 10-day average value cannot be negative")
+        if self.investor_mode not in {"either", "foreign", "institution", "combined"}:
+            raise ValueError("invalid investor_mode")
+        if self.min_investor_net_buy_100m < 0:
+            raise ValueError("minimum investor net buy cannot be negative")
+        if self.min_today_change_pct < 0:
+            raise ValueError("minimum today change cannot be negative")
         return FullScanConfig(
             provider=self.provider.strip().lower(),
             market=market,
             min_market_cap_100m=float(self.min_market_cap_100m),
             min_operating_profit_100m=float(self.min_operating_profit_100m),
             signal_mode=self.signal_mode,
+            prealert_pct=float(self.prealert_pct),
+            avg_value10_filter_enabled=bool(self.avg_value10_filter_enabled),
+            min_avg_value10_100m=float(self.min_avg_value10_100m),
+            investor_filter_enabled=bool(self.investor_filter_enabled),
+            investor_mode=self.investor_mode,
+            min_investor_net_buy_100m=float(self.min_investor_net_buy_100m),
+            today_change_filter_enabled=bool(self.today_change_filter_enabled),
+            min_today_change_pct=float(self.min_today_change_pct),
         )
 
     def to_dict(self) -> dict:
@@ -54,6 +85,14 @@ class FullScanConfig:
             "min_market_cap_100m": self.min_market_cap_100m,
             "min_operating_profit_100m": self.min_operating_profit_100m,
             "signal_mode": self.signal_mode,
+            "prealert_pct": self.prealert_pct,
+            "avg_value10_filter_enabled": self.avg_value10_filter_enabled,
+            "min_avg_value10_100m": self.min_avg_value10_100m,
+            "investor_filter_enabled": self.investor_filter_enabled,
+            "investor_mode": self.investor_mode,
+            "min_investor_net_buy_100m": self.min_investor_net_buy_100m,
+            "today_change_filter_enabled": self.today_change_filter_enabled,
+            "min_today_change_pct": self.min_today_change_pct,
         }
 
 
@@ -68,7 +107,25 @@ def _worker_count(provider: MarketDataProvider) -> int:
 
 
 def _eligible_stages(signal_mode: str) -> set[str]:
-    return {"PREALERT"} if signal_mode == "prealert" else {"PREALERT", "BREAKOUT"}
+    if signal_mode == "prealert":
+        return {"PREALERT"}
+    if signal_mode == "breakout":
+        return {"BREAKOUT"}
+    return {"PREALERT", "BREAKOUT"}
+
+
+def _investor_filter_passes(config: FullScanConfig, foreign: float, institution: float) -> bool:
+    threshold = config.min_investor_net_buy_100m * 100_000_000
+    positive_threshold = max(0.0, threshold)
+    if config.investor_mode == "foreign":
+        value = foreign
+    elif config.investor_mode == "institution":
+        value = institution
+    elif config.investor_mode == "combined":
+        value = foreign + institution
+    else:
+        value = max(foreign, institution)
+    return value > 0 if positive_threshold == 0 else value >= positive_threshold
 
 
 def scan_full_market(
@@ -140,10 +197,10 @@ def scan_full_market(
         and member.operating_profit_100m >= config.min_operating_profit_100m
     ]
     total = len(eligible)
-    report("signals", 0, total, f"재무 필터 통과 {total:,}개 · PREALERT 계산중")
+    signal_label = "PREALERT/BREAKOUT" if config.signal_mode == "actionable" else config.signal_mode.upper()
+    report("signals", 0, total, f"재무 필터 통과 {total:,}개 · {signal_label} 계산중")
 
     min_avg_value20 = float(os.getenv("MIN_AVG_VALUE20", "10000000000"))
-    prealert_pct = float(os.getenv("PREALERT_PCT", "1.0"))
     min_score = int(os.getenv("MIN_SCORE", "55"))
     stages = _eligible_stages(config.signal_mode)
 
@@ -151,16 +208,37 @@ def scan_full_market(
         snapshot = get_market_snapshot(data, member.symbol, HISTORY_COUNT)
         if config.provider != "demo" and snapshot.quote.source == "demo":
             raise RuntimeError("demo fallback is excluded from a real full-market scan")
+        today_change_pct = validate_snapshot_price_scale(snapshot)
         result = analyze(
             snapshot.bars,
             current=snapshot.quote.price,
             current_volume=snapshot.quote.volume,
             min_avg_value20=min_avg_value20,
-            prealert_pct=prealert_pct,
+            prealert_pct=config.prealert_pct,
             min_score=min_score,
         )
         if result.stage not in stages:
             return None
+        if (
+            config.avg_value10_filter_enabled
+            and result.avg_value10 < config.min_avg_value10_100m * 100_000_000
+        ):
+            return None
+        if (
+            result.stage == "BREAKOUT"
+            and config.today_change_filter_enabled
+            and today_change_pct < config.min_today_change_pct
+        ):
+            return None
+        flow = None
+        if config.investor_filter_enabled:
+            flow = data.get_investor_flow(member.symbol)
+            if config.provider != "demo" and flow.source == "demo":
+                raise RuntimeError("demo investor flow is excluded from a real full-market scan")
+            if not _investor_filter_passes(
+                config, flow.foreign_net_amount, flow.institution_net_amount
+            ):
+                return None
         item = result.to_dict()
         item.update(
             symbol=member.symbol,
@@ -170,7 +248,13 @@ def scan_full_market(
             operating_profit_100m=member.operating_profit_100m,
             fiscal_period=member.fiscal_period,
             current=snapshot.quote.price,
+            today_change_pct=today_change_pct,
             source=snapshot.quote.source,
+            investor_date=flow.date if flow else None,
+            foreign_net_buy_100m=(flow.foreign_net_amount / 100_000_000) if flow else None,
+            institution_net_buy_100m=(flow.institution_net_amount / 100_000_000) if flow else None,
+            investor_source=flow.source if flow else None,
+            investor_amount_estimated=flow.estimated_amount if flow else None,
         )
         return item
 
@@ -204,7 +288,7 @@ def scan_full_market(
         "universe_count": universe_count,
         "fundamentals_passed": total,
         "error_count": errors,
-        "message": f"시총 통과 {universe_count:,}개 → 재무 통과 {total:,}개 → 후보 {len(items):,}개",
+        "message": f"시총 통과 {universe_count:,}개 → 재무 통과 {total:,}개 → 선택 옵션 통과 후보 {len(items):,}개",
     }
     return items, summary
 

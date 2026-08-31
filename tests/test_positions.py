@@ -112,6 +112,69 @@ def test_exit_now_when_ten_day_low_is_above_stop():
     assert g.common_stop == 276_000
     assert g.exit10 == 290_000
     assert g.action == "EXIT_NOW"
+    assert g.sell_action == "EXIT_NOW"
+    assert g.sell_pct == 100
+
+
+def staged_exit_bars():
+    history = [Bar(high=105, low=80, close=100) for _ in range(135)]
+    history.extend(Bar(high=115, low=80, close=110) for _ in range(5))
+    return history
+
+
+def test_orthodox_turtle_ignores_moving_average_exit():
+    guide = build_position_guide(
+        symbol="000660",
+        bars=staged_exit_bars(),
+        current=108,
+        entry_price=100,
+        n_at_entry=10,
+        filled_units=1,
+        exit_strategy="turtle",
+    )
+    assert guide.ma5 == 110
+    assert guide.ma10 == 105
+    assert guide.sell_action == "SELL_WAIT"
+
+
+def test_staged_exit_guides_half_at_ma5_and_remainder_at_ma10():
+    ma5_guide = build_position_guide(
+        symbol="000660",
+        bars=staged_exit_bars(),
+        current=108,
+        entry_price=100,
+        n_at_entry=10,
+        filled_units=1,
+        exit_strategy="ma_staged",
+    )
+    ma10_guide = build_position_guide(
+        symbol="000660",
+        bars=staged_exit_bars(),
+        current=104,
+        entry_price=100,
+        n_at_entry=10,
+        filled_units=1,
+        exit_strategy="ma_staged",
+    )
+    assert ma5_guide.sell_action == "REDUCE_1"
+    assert ma5_guide.sell_pct == 50
+    assert ma10_guide.sell_action == "REDUCE_2"
+    assert ma10_guide.sell_pct == 100
+
+
+def test_protective_stop_has_priority_over_all_sell_rules():
+    guide = build_position_guide(
+        symbol="000660",
+        bars=staged_exit_bars(),
+        current=79,
+        entry_price=100,
+        n_at_entry=10,
+        filled_units=1,
+        exit_strategy="ma_staged",
+    )
+    assert guide.common_stop == 80
+    assert guide.sell_action == "STOP_NOW"
+    assert guide.sell_pct == 100
 
 
 def test_wait_entry_and_entry_now():

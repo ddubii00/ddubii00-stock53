@@ -40,6 +40,12 @@ Entry 체결가 `E`와 Entry 당시 `ATR20 = N`은 포지션 수명 동안 고�
 - stop은 이전 저장값보다 내려가지 않음
 - STOP과 EXIT가 동시에 충족되면 STOP 우선
 
+매도 가이드는 두 모드를 제공합니다.
+
+- `turtle`: 정통 System 1. 고정 익절 없이 직전 10거래일 최저가 이탈 시 전량청산
+- `ma_staged`: 조기 수익보호용 변형. MA5 이탈 시 50%, MA10 이탈 시 잔여 포지션 정리
+- 어느 모드든 `최근 체결 Unit - 2N` 보호손절과 10D Low 전량청산이 이동평균 기준보다 우선
+
 risk 방식은 개인용 보수적 가이드이며 원조 futures contract sizing 전체를 복제하는 모델이 아닙니다.
 
 ## Data provider
@@ -63,6 +69,10 @@ fallback은 일봉과 현재가를 같은 provider에서 성공시킨 뒤 하나
 
 Naver/KRX는 탐색·테스트용입니다. 실전 Oracle 판단은 KIS를 기준으로 운영하세요.
 
+Naver 현재가는 정규장 live quote를 사용하고, NXT 프리/애프터마켓 세션이 실제 거래 중이면 NXT 체결가를 우선합니다. 과거 DEMO로 저장된 추적 설정은 화면 재접속 시 AUTO 실제 시세로 전환하며, 사용자가 입력해야 하는 Entry 체결가와 ATR은 임의로 바꾸지 않습니다.
+
+현재가와 D-1 종가의 차이가 국내 일일 가격제한폭을 명백히 넘으면 액면분할·병합 미반영 가능성이 있으므로 해당 snapshot의 돌파/ATR/손절 계산을 건너뜁니다. 실제 현재가만 맞고 과거 가격 스케일이 다른 상태에서 거짓 BREAKOUT을 만드는 것을 방지하기 위한 안전장치입니다.
+
 ## KOSPI/KOSDAQ 전체 PREALERT 검색
 
 전체검색은 약 4천 개 차트를 무조건 요청하지 않습니다.
@@ -72,11 +82,14 @@ KOSPI/KOSDAQ 종목목록
 → 최소 시가총액(억원)
 → 최근 확정 연간 영업이익(억원, 컨센서스 제외)
 → 통과 종목만 KIS/Naver 일봉·현재가 조회
-→ PREALERT 또는 PREALERT+BREAKOUT
+→ PREALERT 또는 당일 첫 BREAKOUT
+→ 선택 필터: 10D 평균거래대금 / 당일 외인·기관 수급 / BREAKOUT 당일 상승률
 → SQLite 결과 snapshot
 ```
 
-기본값은 시가총액 500억원 이상, 영업이익 50억원 이상이며 UI에서 숫자를 바꿀 수 있습니다. 영업이익을 제공하지 않는 ETF·ETN 등은 제외합니다. 재무값은 기본 7일 캐시하고 시세 신호는 새 검색 때 다시 계산합니다.
+기본값은 시가총액 500억원 이상, 영업이익 50억원 이상, 10일 평균거래대금 500억원 이상이며 UI에서 숫자를 바꿀 수 있습니다. 각 선택 필터의 `×`를 누르면 그 조건을 제외할 수 있습니다. 외인/기관은 각각 또는 합산 순매수액을 설정할 수 있고, `0억원`은 순매수 여부만 확인합니다. Naver 수급액은 순매수수량×가격의 추정값이며 KIS 공식 투자자 데이터는 장 종료 후 확정되는 데이터입니다. 영업이익을 제공하지 않는 ETF·ETN 등은 제외합니다. 재무값은 기본 7일 캐시하고 시세 신호는 새 검색 때 다시 계산합니다.
+
+PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. BREAKOUT은 `현재가 >= 직전 완료 20거래일 High`이면서 어제 이미 돌파하지 않은, 오늘 최초 돌파만 반환합니다. BREAKOUT의 `당일 5% 이상` 필터는 선택 사항이며 제거하면 상승률과 관계없이 정상 20D 돌파를 찾습니다.
 
 전체검색은 로컬/Oracle 장기 작업입니다. Vercel serverless 함수에는 background thread를 실행하지 않으며, Vercel UI는 직접 입력 watchlist 또는 외부 Oracle scanner가 저장·제공한 snapshot을 읽는 용도로 둡니다.
 
@@ -108,13 +121,16 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - `실시간`: ON이면 초록색 `● 검색중`, 기본 10초 browser polling
 - poll 간격: `REALTIME_POLL_SECONDS`
 - 중복 fetch cycle 방지
-- 후보 행 클릭: 상세·Entry/ATR 기본값 표시
+- 후보 행 클릭: 상세·Entry/ATR 기본값 표시. 저장된 추적 종목은 자동 후보 선택으로 덮어쓰지 않음
 - 검색 범위: `KOSPI/KOSDAQ 전체` 또는 `직접 입력 종목`
-- 전체시장 필터: 시장, 최소 시가총액(억원), 최소 영업이익(억원), 표시 신호
+- PREALERT/BREAKOUT 버튼: 신호를 전환하고 전체시장에서는 새 검색 실행
+- 전체시장 필터: 시장, 최소 시가총액, 최소 영업이익, 10D 평균거래대금, 외인/기관 수급, BREAKOUT 당일 상승률
+- 표 머리글: 첫 클릭 내림차순, 두 번째 클릭 오름차순
 - `전체시장 새 검색`: 로컬/Oracle background scan을 시작하고 진행률 표시
 - 전체검색 중복 실행 방지, 일반 실시간 polling은 마지막 snapshot만 재조회
 - Vercel 상태: `localStorage`
 - `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가
+- 매도 전략: 정통 10D Low 전량청산 또는 MA5 50%/MA10 잔여 분할 가이드
 
 worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지 않습니다.
 
@@ -198,13 +214,16 @@ DB_PATH=./data/turtle.db
 - today 제외 20D breakout / PREALERT 1% / BREAKOUT
 - yesterday breakout 제외
 - ATR20 / 10D exit
+- 10D 평균거래대금 / BREAKOUT 당일 상승률 / 투자자 수급 선택 필터
 - 0.5N / 1.0N / 1.5N add
 - fixed / risk quantity
 - Unit별 실제 수량 합
 - common stop ratchet
 - WAIT / ENTRY / ADD / STOP / EXIT
+- 정통 10D Low 매도 / MA5·MA10 분할 매도 / 보호손절 우선순위
 - SQLite signal dedup / 수동 fill 확정
 - provider snapshot 일관성
+- Naver NXT 거래 세션 현재가 선택
 - 전체시장 시가총액 filter와 최신 확정 영업이익 선택
 - 재무 filter 선적용 후 시세 history 조회
 - 전체시장 background scan API와 snapshot 조회

@@ -31,6 +31,7 @@ class TurtleResult:
     ma20: float
     ma60: float
     ma120: float | None
+    avg_value10: float
     avg_value20: float
     volume_ratio: float
     rs20: float
@@ -117,6 +118,7 @@ def analyze(
     ma20 = _avg(closes[-20:])
     ma60 = _avg(closes[-60:])
     ma120 = _avg(closes[-120:]) if len(closes) >= 120 else None
+    avg_value10 = _avg([b.value for b in bars[-10:]])
     avg_value20 = _avg([b.value for b in bars[-20:]])
     avg_vol20 = _avg([b.volume for b in bars[-20:]])
     volume_ratio = current_volume / avg_vol20 if avg_vol20 > 0 else 0.0
@@ -176,6 +178,7 @@ def analyze(
         ma20=ma20,
         ma60=ma60,
         ma120=ma120,
+        avg_value10=avg_value10,
         avg_value20=avg_value20,
         volume_ratio=volume_ratio,
         rs20=rs20,

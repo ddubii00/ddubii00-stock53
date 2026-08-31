@@ -11,7 +11,11 @@ from pydantic import BaseModel, Field
 
 from app.full_scan import FullScanConfig, full_scan_jobs
 from app.positions import build_position_guide
-from app.providers import build_market_data_provider, get_market_snapshot
+from app.providers import (
+    build_market_data_provider,
+    get_market_snapshot,
+    validate_snapshot_price_scale,
+)
 from app.state import build_position_state_store
 from app.store import get_full_market_scan, get_latest_full_market_scan
 from app.strategy import Bar, analyze
@@ -21,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SYMBOL_RE = re.compile(r"^\d{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
-app = FastAPI(title="Turtle Signal Guide", version="0.5.0")
+app = FastAPI(title="Turtle Signal Guide", version="0.6.0")
 
 DEFAULT_SYMBOLS = {
     "000660": "SK하이닉스",
@@ -61,6 +65,7 @@ class GuideIn(BaseModel):
     account_equity: float = Field(default=100_000_000, ge=0)
     risk_pct: float = Field(default=0.5, ge=0, le=100)
     previous_stop: float | None = Field(default=None, ge=0)
+    exit_strategy: str = Field(default="turtle", pattern="^(turtle|ma_staged)$")
     provider: str = "auto"
 
 
@@ -74,7 +79,15 @@ class FullMarketScanIn(BaseModel):
     market: str = Field(default="ALL", pattern="^(ALL|KOSPI|KOSDAQ)$")
     min_market_cap_100m: float = Field(default=500, ge=0)
     min_operating_profit_100m: float = 50
-    signal_mode: str = Field(default="prealert", pattern="^(prealert|actionable)$")
+    signal_mode: str = Field(default="prealert", pattern="^(prealert|breakout|actionable)$")
+    prealert_pct: float = Field(default=1.0, ge=0, le=100)
+    avg_value10_filter_enabled: bool = True
+    min_avg_value10_100m: float = Field(default=500, ge=0)
+    investor_filter_enabled: bool = False
+    investor_mode: str = Field(default="either", pattern="^(either|foreign|institution|combined)$")
+    min_investor_net_buy_100m: float = Field(default=0, ge=0)
+    today_change_filter_enabled: bool = False
+    min_today_change_pct: float = Field(default=5, ge=0, le=100)
 
 
 def _valid_symbol(symbol: str) -> str:
@@ -101,7 +114,7 @@ def health():
     app_mode = os.getenv("APP_MODE", "vercel")
     return {
         "ok": True,
-        "version": "0.5.0",
+        "version": "0.6.0",
         "app_mode": app_mode,
         "provider_mode": mode,
         "provider_chain": getattr(provider, "name", provider.__class__.__name__),
@@ -148,6 +161,7 @@ def candidates(
     include_filtered: bool = True,
     scope: str = "watchlist",
     scan_id: int | None = None,
+    prealert_pct: float = 1.0,
 ):
     if scope == "all":
         if os.getenv("APP_MODE", "vercel") == "vercel":
@@ -184,6 +198,7 @@ def candidates(
             "error_count": scan["error_count"],
             "started_at": scan["started_at"],
             "finished_at": scan["finished_at"],
+            "options": scan.get("options", {}),
             "note": scan["message"],
             "items": scan["items"],
         }
@@ -198,12 +213,13 @@ def candidates(
         try:
             symbol = _valid_symbol(raw_symbol)
             snapshot = get_market_snapshot(market_provider, symbol, HISTORY_COUNT)
+            validate_snapshot_price_scale(snapshot)
             result = analyze(
                 snapshot.bars,
                 current=snapshot.quote.price,
                 current_volume=snapshot.quote.volume,
                 min_avg_value20=float(os.getenv("MIN_AVG_VALUE20", "10000000000")),
-                prealert_pct=float(os.getenv("PREALERT_PCT", "1.0")),
+                prealert_pct=max(0.0, prealert_pct),
                 min_score=int(os.getenv("MIN_SCORE", "55")),
             )
             item = result.to_dict()
@@ -275,6 +291,7 @@ def scan(payload: ScanIn):
 def _build_guide(payload: GuideIn) -> dict:
     symbol = _valid_symbol(payload.symbol)
     snapshot = get_market_snapshot(_provider(payload.provider), symbol, HISTORY_COUNT)
+    validate_snapshot_price_scale(snapshot)
     guide = build_position_guide(
         symbol=symbol,
         bars=snapshot.bars,
@@ -287,6 +304,7 @@ def _build_guide(payload: GuideIn) -> dict:
         account_equity=payload.account_equity,
         risk_pct=payload.risk_pct,
         previous_stop=payload.previous_stop,
+        exit_strategy=payload.exit_strategy,
     )
     response = guide.to_dict()
     response.update(name=DEFAULT_SYMBOLS.get(symbol, symbol), source=snapshot.quote.source)
@@ -307,6 +325,7 @@ def guide_get(
     entry_price: float = 100_000,
     n_at_entry: float = 5_000,
     filled_units: int = 0,
+    exit_strategy: str = "turtle",
     provider: str = "demo",
 ):
     try:
@@ -316,6 +335,7 @@ def guide_get(
                 entry_price=entry_price,
                 n_at_entry=n_at_entry,
                 filled_units=filled_units,
+                exit_strategy=exit_strategy,
                 provider=provider,
             )
         )

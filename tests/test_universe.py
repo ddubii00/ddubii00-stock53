@@ -116,3 +116,54 @@ def test_full_scan_filters_fundamentals_before_fetching_price_history(monkeypatc
     assert summary["universe_count"] == 3
     assert summary["fundamentals_passed"] == 2
     assert all(item["operating_profit_100m"] >= 50 for item in items)
+
+
+def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "filter-scan.db"))
+    provider = CountingDemo()
+    base = dict(
+        provider="demo",
+        market="KOSPI",
+        min_market_cap_100m=500,
+        min_operating_profit_100m=50,
+        signal_mode="breakout",
+    )
+
+    items, _ = scan_full_market(
+        FullScanConfig(**base),
+        market_provider=provider,
+        universe_provider=FilterUniverse(),
+    )
+    assert [item["symbol"] for item in items] == ["000660"]
+    assert items[0]["stage"] == "BREAKOUT"
+    assert items[0]["avg_value10"] >= 500 * 100_000_000
+
+    no_large_move, _ = scan_full_market(
+        FullScanConfig(**base, today_change_filter_enabled=True, min_today_change_pct=5),
+        market_provider=provider,
+        universe_provider=FilterUniverse(),
+    )
+    assert no_large_move == []
+
+    no_large_flow, _ = scan_full_market(
+        FullScanConfig(
+            **base,
+            investor_filter_enabled=True,
+            investor_mode="either",
+            min_investor_net_buy_100m=100,
+        ),
+        market_provider=provider,
+        universe_provider=FilterUniverse(),
+    )
+    assert no_large_flow == []
+
+    value_filter_disabled, _ = scan_full_market(
+        FullScanConfig(
+            **base,
+            avg_value10_filter_enabled=False,
+            min_avg_value10_100m=1_000_000,
+        ),
+        market_provider=provider,
+        universe_provider=FilterUniverse(),
+    )
+    assert [item["symbol"] for item in value_filter_disabled] == ["000660"]

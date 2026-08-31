@@ -7,7 +7,12 @@ import time
 
 from app.notifiers import Notifier, build_notifier
 from app.positions import build_position_guide, calculate_unit_qty
-from app.providers import MarketDataProvider, build_market_data_provider, get_market_snapshot
+from app.providers import (
+    MarketDataProvider,
+    build_market_data_provider,
+    get_market_snapshot,
+    validate_snapshot_price_scale,
+)
 from app.state import build_position_state_store
 from app.store import event_once
 from app.strategy import TurtleResult, analyze
@@ -72,6 +77,7 @@ def monitor_once(
     for symbol in symbols:
         try:
             snapshot = get_market_snapshot(market_provider, symbol, HISTORY_COUNT)
+            validate_snapshot_price_scale(snapshot)
             result = analyze(
                 snapshot.bars,
                 current=snapshot.quote.price,
@@ -92,6 +98,7 @@ def monitor_once(
         symbol = position["symbol"]
         try:
             snapshot = get_market_snapshot(market_provider, symbol, HISTORY_COUNT)
+            validate_snapshot_price_scale(snapshot)
             guide = build_position_guide(
                 symbol=symbol,
                 bars=snapshot.bars,
@@ -100,6 +107,7 @@ def monitor_once(
                 n_at_entry=position["n_at_entry"],
                 filled_units=position["filled_units"],
                 previous_stop=position.get("common_stop"),
+                exit_strategy=position.get("exit_strategy", "turtle"),
                 **{key: position[key] for key in sizing_keys},
             )
             if guide.action in {"ADD_NOW", "STOP_NOW", "EXIT_NOW"}:

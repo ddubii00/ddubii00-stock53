@@ -15,6 +15,13 @@ def _fmt(value: float | None) -> str:
     return "-" if value is None else f"{value:,.0f}원"
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _message(item: dict) -> str:
     quantity, amount, risk_budget = calculate_unit_qty(
         price=float(item["breakout20"]),
@@ -43,6 +50,14 @@ def scan_once() -> dict:
         min_market_cap_100m=float(os.getenv("MIN_MARKET_CAP_100M", "500")),
         min_operating_profit_100m=float(os.getenv("MIN_OPERATING_PROFIT_100M", "50")),
         signal_mode=os.getenv("FULL_SCAN_SIGNAL_MODE", "actionable"),
+        prealert_pct=float(os.getenv("PREALERT_PCT", "1")),
+        avg_value10_filter_enabled=_env_bool("AVG_VALUE10_FILTER_ENABLED", True),
+        min_avg_value10_100m=float(os.getenv("MIN_AVG_VALUE10_100M", "500")),
+        investor_filter_enabled=_env_bool("INVESTOR_FILTER_ENABLED", False),
+        investor_mode=os.getenv("INVESTOR_MODE", "either"),
+        min_investor_net_buy_100m=float(os.getenv("MIN_INVESTOR_NET_BUY_100M", "0")),
+        today_change_filter_enabled=_env_bool("TODAY_CHANGE_FILTER_ENABLED", False),
+        min_today_change_pct=float(os.getenv("MIN_TODAY_CHANGE_PCT", "5")),
     )
     scan_id = run_full_market_scan(config)
     scan = get_full_market_scan(scan_id, include_items=True)
