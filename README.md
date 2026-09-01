@@ -187,6 +187,18 @@ KIS 키 없이도 Naver 실패 시 Demo까지 fallback되어 화면이 열립니
 
 여러 브라우저에서 동일한 전체시장 최신 결과를 공유하려면 Oracle scanner 결과를 PostgreSQL/Supabase 등 외부 영속 store로 옮기고 `full_market_scans` repository adapter를 연결하세요. 기본 공유 저장소는 로컬/Oracle SQLite이며, Vercel 수동 결과는 실행한 브라우저에만 남습니다.
 
+### Root/subpath 동시 배포
+
+프론트엔드의 모든 API 요청은 `fetchJson()`의 `resolveApiUrl()`을 거쳐 현재 페이지 경로 기준으로 해석됩니다. 백엔드 `/api/*` route는 그대로 유지하며 특정 Oracle prefix를 코드에 하드코딩하지 않습니다.
+
+```text
+Vercel page /                    + /api/health → /api/health
+Oracle page /stock53-7/          + /api/health → /stock53-7/api/health
+Oracle page /stock53-7/          + /api/guide  → /stock53-7/api/guide
+```
+
+따라서 Nginx가 `/stock53-7/` prefix를 제거한 후 FastAPI root로 전달하는 구성과 Vercel root 배포를 같은 `index.html`로 지원합니다.
+
 ## Oracle + KIS + Telegram
 
 ```bash
