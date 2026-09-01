@@ -118,7 +118,7 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 ## UI 동작
 
 - `↻ 새로고침`: 후보와 저장된 추적종목 가이드를 각각 한 번 조회
-- `실시간`: ON이면 초록색 `● 검색중`, 기본 10초 browser polling
+- `실시간`: ON이면 초록색 `● 검색중`, 기본 30초 browser polling
 - poll 간격: `REALTIME_POLL_SECONDS`
 - 중복 fetch cycle 방지
 - 후보 행 클릭: 상세·Entry/ATR 기본값 표시. 저장된 추적 종목은 자동 후보 선택으로 덮어쓰지 않음
@@ -169,7 +169,7 @@ GitHub 저장소 root를 Vercel에서 Import하면 됩니다. `api/index.py`의 
 ```text
 APP_MODE=vercel
 DATA_PROVIDER=auto
-REALTIME_POLL_SECONDS=10
+REALTIME_POLL_SECONDS=30
 ENABLE_KRX_FALLBACK=0
 ```
 

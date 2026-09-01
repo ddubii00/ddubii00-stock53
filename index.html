@@ -7,7 +7,7 @@
 <style>
 :root{color-scheme:dark;--bg:#090d12;--panel:#111821;--panel2:#0e151d;--line:#263343;--text:#edf3f8;--muted:#92a4b7;--yellow:#facc15;--green:#22c55e;--red:#f05252;--blue:#38bdf8}
 *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Noto Sans KR",sans-serif}.wrap{max-width:1280px;margin:auto;padding:24px}.top{display:flex;gap:18px;justify-content:space-between;align-items:flex-end;margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.13em;color:var(--blue);font-weight:800}.title{font-size:32px;font-weight:850;margin:5px 0}.muted{color:var(--muted)}.tiny{font-size:12px}.status{border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:13px}.buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.button,select,input{appearance:none;background:#16202b;border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:10px}.button{cursor:pointer;font-weight:750}.button:hover{border-color:#55708d}.button:disabled{opacity:.55;cursor:not-allowed}.button.primary{background:#0d4c6b;border-color:#1679a7}.button.live{min-width:96px}.button.live.active{background:#15803d;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12)}.button.success{background:#14532d;border-color:#22c55e}.button.danger{border-color:#8b2525}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.card,.actionBox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}.hero{padding:20px}.signal{font-size:13px;font-weight:800}.big{font-size:28px;font-weight:850;margin:6px 0}.yellow{color:var(--yellow)}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.section{font-size:18px;font-weight:750;margin:26px 0 12px}.notice{padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px;line-height:1.55;margin-bottom:14px}.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:1180px;background:var(--panel)}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;white-space:nowrap}th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}tbody tr{cursor:pointer}tbody tr:hover{background:#16202b}.stage{font-weight:850}.error{color:var(--red)}.kv{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:10px 0;font-size:14px}.kv:first-child{border-top:0}.bar{height:8px;background:#202b37;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--blue)}.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}.field input,.field select{width:100%}.actionBox{background:var(--panel2)}.actionTitle{font-size:26px;font-weight:900}.tracked{border-color:#2563eb}.right{margin-left:auto}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:3px 3px 0 0;font-size:12px}.foot{margin:28px 0;color:var(--muted);font-size:13px;line-height:1.65}.scanPanel{margin-bottom:10px}.scanProgress{min-height:20px;margin-top:10px}@media(max-width:720px){.top{align-items:flex-start;flex-direction:column}.title{font-size:27px}.right{margin-left:0}.wrap{padding:16px}#symbolsInput{min-width:100%!important}}
-.signalButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}.signalButton{border:1px solid var(--line);background:#0e151d;color:var(--muted);border-radius:9px;padding:9px;cursor:pointer;font-weight:850}.signalButton.active[data-signal="prealert"]{color:var(--yellow);border-color:#a88412;background:#3d3308}.signalButton.active[data-signal="breakout"]{color:var(--green);border-color:#16823d;background:#0d3b20}.filterLabel{font-size:12px;color:var(--muted);margin:14px 0 8px}.filterList{display:flex;gap:8px;flex-wrap:wrap}.filterChip{display:flex;align-items:center;gap:7px;padding:7px 8px 7px 11px;border:1px solid #38506a;border-radius:12px;background:#111d29;font-size:12px}.filterChip input{width:92px;padding:7px}.filterChip select{width:auto;padding:7px}.filterX{border:0;background:transparent;color:#a9bbcc;font-size:20px;line-height:1;cursor:pointer;padding:0 3px}.addFilter{padding:7px 10px;font-size:12px}.sortButton{border:0;background:transparent;color:inherit;font:inherit;font-weight:800;cursor:pointer;padding:0;white-space:nowrap}.sortButton:hover{color:var(--blue)}.sortButton.active{color:var(--blue)}.sellRule{line-height:1.65}.sellAction{font-size:24px;font-weight:900;margin:6px 0}
+.signalButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}.signalButton{border:1px solid var(--line);background:#0e151d;color:var(--muted);border-radius:9px;padding:9px;cursor:pointer;font-weight:850}.signalButton.active[data-signal="prealert"]{color:var(--yellow);border-color:#a88412;background:#3d3308}.signalButton.active[data-signal="breakout"]{color:var(--green);border-color:#16823d;background:#0d3b20}.filterLabel{font-size:12px;color:var(--muted);margin:14px 0 8px}.filterList{display:flex;gap:8px;flex-wrap:wrap}.filterChip{display:flex;align-items:center;gap:7px;padding:7px 8px 7px 11px;border:1px solid #38506a;border-radius:12px;background:#111d29;font-size:12px}.filterChip input{width:92px;padding:7px}.filterChip select{width:auto;padding:7px}.filterX{border:0;background:transparent;color:#a9bbcc;font-size:20px;line-height:1;cursor:pointer;padding:0 3px}.addFilter{padding:7px 10px;font-size:12px}.sortButton{border:0;background:transparent;color:inherit;font:inherit;font-weight:800;cursor:pointer;padding:0;white-space:nowrap}.sortButton:hover{color:var(--blue)}.sortButton.active{color:var(--blue)}.sellRule{line-height:1.65}.sellAction{font-size:24px;font-weight:900;margin:6px 0}.changeUp{color:var(--green);font-weight:800}.changeDown{color:var(--red);font-weight:800}.changeFlat{color:var(--blue);font-weight:800}
 </style>
 </head>
 <body>
@@ -16,12 +16,13 @@
     <div>
       <div class="eyebrow">TURTLE SYSTEM 1 · READ-ONLY GUIDE</div>
       <div class="title">터틀 트레이딩 시점</div>
-      <div class="muted">후보검색 → 1% PREALERT → 20D BREAKOUT → 0.5N 추매 → 2N STOP → 10D EXIT</div>
+      <div class="muted">후보검색 → <span id="prealertFlowPct">1%</span> PREALERT → 20D BREAKOUT → 0.5N 추매 → 2N STOP → 10D EXIT</div>
     </div>
     <div class="buttons">
       <select id="provider" aria-label="데이터 공급자"><option value="auto">AUTO</option><option value="kis">KIS</option><option value="naver">NAVER</option><option value="krx">KRX</option><option value="demo">DEMO</option></select>
       <button id="refreshBtn" class="button primary" type="button">↻ 새로고침</button>
       <button id="liveBtn" class="button live" type="button">실시간</button>
+      <span id="pollInterval" class="muted tiny">주기 30초</span>
       <span id="scanState" class="status" aria-live="polite">대기</span>
       <span id="health" class="status">API 확인중</span>
     </div>
@@ -30,7 +31,7 @@
   <div class="notice"><b>자동주문 없음.</b> Vercel의 실시간은 브라우저 polling입니다. Oracle 운영은 KIS 데이터를 우선 사용하며 Telegram 알림만 전송합니다. 체결된 Unit은 사용자가 <b>진입/추매 완료</b>로 직접 확정해야 합니다.</div>
 
   <section class="grid">
-    <div class="card hero"><div class="signal yellow">PREALERT</div><div class="big">돌파가 1% 이내</div><div class="muted">신규 진입 준비</div></div>
+    <div class="card hero"><div class="signal yellow">PREALERT</div><div id="prealertHeroRange" class="big">돌파가 1% 이내</div><div class="muted">신규 진입 준비</div></div>
     <div class="card hero"><div class="signal green">BREAKOUT</div><div class="big">직전 20D High 돌파</div><div class="muted">어제 돌파 종목은 제외</div></div>
     <div class="card hero"><div class="signal blue">POSITION GUIDE</div><div class="big">고정 N · 0.5N 추매</div><div class="muted">수량·STOP·10D EXIT</div></div>
   </section>
@@ -83,7 +84,7 @@
   </section>
   <div id="reasons" class="notice" style="margin-top:12px">-</div>
 
-  <h2 class="section">내가 선택한 종목 · 매매 행동 가이드</h2>
+  <h2 class="section">내가 선택한 종목 · 매매 행동 가이드 <span id="gTrackingName" class="muted tiny">종목 미선택</span></h2>
   <section id="trackingCard" class="card">
     <div class="formGrid">
       <div class="field"><label for="gSymbol">선택 종목코드</label><input id="gSymbol" value="000660"></div>
@@ -130,14 +131,20 @@ const pct=n=>Number.isFinite(Number(n))?Number(n).toFixed(2)+'%':'-';
 const eok=n=>Number.isFinite(Number(n))?(Number(n)/100000000).toFixed(1)+'억':'-';
 const num=id=>Number(document.getElementById(id).value||0);
 const el=id=>document.getElementById(id);
-let selected=null,lastGuide=null,realtimeTimer=null,cycleBusy=false,fullScanBusy=false,realtimeMs=10000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false;
-let signalMode='prealert',candidateItems=[],candidateNote='',sortState={key:null,direction:'desc'};
+let selected=null,lastGuide=null,realtimeTimer=null,cycleBusy=false,fullScanBusy=false,realtimeMs=30000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false,trackingName='';
+let signalMode='prealert',candidateItems=[],candidateNote='',sortState={key:'market_cap_100m',direction:'desc'};
 const activeFilters={avgValue10:true,investor:false,todayChange:false};
 
 function actionClass(action){return action==='ADD_NOW'||action==='ENTRY_NOW'?'green':action==='STOP_NOW'||action==='EXIT_NOW'?'red':action==='WAIT_ENTRY'?'yellow':'blue'}
 function stored(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
 function storedScanConfig(){try{return JSON.parse(localStorage.getItem(SCAN_CONFIG_KEY)||'null')}catch{return null}}
 function stageClass(stage){return stage==='BREAKOUT'?'green':stage==='PREALERT'?'yellow':stage==='ERROR'?'red':''}
+function plainPct(value){const number=Math.max(0,Number(value)||0);return Number.isInteger(number)?String(number):number.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}
+function renderPrealertPct(){const label=plainPct(num('prealertPct'))+'%';el('prealertHeroRange').textContent='돌파가 '+label+' 이내';el('prealertFlowPct').textContent=label}
+function renderTrackingName(symbol=el('gSymbol').value.trim()){
+  const name=trackingName&&trackingName!==symbol?trackingName:'';el('gTrackingName').textContent=name?`· ${name} (${symbol})`:(symbol?`· ${symbol}`:'종목 미선택');
+}
+function changeClass(value){const number=Number(value);return !Number.isFinite(number)||number===0?'changeFlat':number>0?'changeUp':'changeDown'}
 function scanConfig(){
   return {
     provider:el('provider').value,market:el('marketScope').value,
@@ -157,6 +164,7 @@ function renderFilters(){
 function setFilter(name,enabled){activeFilters[name]=enabled;renderFilters();saveScanConfig()}
 function setSignalMode(mode,{persist=true}={}){
   signalMode=mode==='breakout'?'breakout':'prealert';
+  sortState=signalMode==='prealert'?{key:'market_cap_100m',direction:'desc'}:{key:null,direction:'desc'};
   document.querySelectorAll('.signalButton').forEach(button=>button.classList.toggle('active',button.dataset.signal===signalMode));
   el('prealertField').hidden=signalMode!=='prealert';renderFilters();
   if(persist)saveScanConfig();
@@ -182,6 +190,7 @@ function showCandidate(data,{populateTracking=true}={}){
   el('reasons').textContent=(data.reasons||[]).join(' · ')||data.error||'-';
   if(populateTracking){
     const oldSymbol=el('gSymbol').dataset.last;el('gSymbol').value=data.symbol||'';
+    trackingName=data.name||data.symbol||'';renderTrackingName(data.symbol||'');
     if(!num('gEntry')||oldSymbol!==data.symbol){el('gEntry').value=Math.round(Number(data.breakout20||0));el('gAtr').value=Math.round(Number(data.atr20||0))}
     el('gSymbol').dataset.last=data.symbol||'';
   }
@@ -203,7 +212,7 @@ function appendCandidateRow(body,item){
       {text:item.stage,cls:'stage '+stageClass(item.stage)},{text:(item.name||item.symbol)+' · '+item.symbol},{text:item.market||'-'},
       {text:Number.isFinite(Number(item.market_cap_100m))?Math.round(Number(item.market_cap_100m)).toLocaleString('ko-KR'):'-'},
       {text:Number.isFinite(Number(item.operating_profit_100m))?Math.round(Number(item.operating_profit_100m)).toLocaleString('ko-KR'):'-'},
-      {text:Number.isFinite(Number(item.avg_value10))?(Number(item.avg_value10)/100000000).toFixed(1):'-'},{text:pct(item.today_change_pct)},
+      {text:Number.isFinite(Number(item.avg_value10))?(Number(item.avg_value10)/100000000).toFixed(1):'-'},{text:pct(item.today_change_pct),cls:changeClass(item.today_change_pct)},
       {text:flowText(item)},{text:fmt(item.current)},{text:fmt(item.breakout20)},{text:pct(item.distance_pct)},{text:String(item.score??'-')},{text:(item.source||'').toUpperCase()}
     ];
   values.forEach(value=>{const cell=document.createElement('td');cell.textContent=value.text;cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;row.appendChild(cell)});
@@ -272,7 +281,7 @@ async function startFullMarketScan(){
 
 function guidePayload(){
   const saved=stored(),symbol=el('gSymbol').value.trim();
-  return {symbol,entry_price:num('gEntry'),n_at_entry:num('gAtr')||null,filled_units:Number(el('gUnits').value),sizing_mode:el('sizingMode').value,fixed_unit_amount:num('unitAmount'),account_equity:num('accountEquity'),risk_pct:num('riskPct'),previous_stop:saved&&saved.symbol===symbol?Number(saved.previous_stop||0)||null:null,exit_strategy:el('exitStrategy').value,provider:el('provider').value};
+  return {symbol,name:trackingName,entry_price:num('gEntry'),n_at_entry:num('gAtr')||null,filled_units:Number(el('gUnits').value),sizing_mode:el('sizingMode').value,fixed_unit_amount:num('unitAmount'),account_equity:num('accountEquity'),risk_pct:num('riskPct'),previous_stop:saved&&saved.symbol===symbol?Number(saved.previous_stop||0)||null:null,exit_strategy:el('exitStrategy').value,provider:el('provider').value};
 }
 async function calculateGuide(showErrors=true){
   const payload=guidePayload();if(!payload.symbol||!payload.entry_price)return null;
@@ -282,6 +291,7 @@ async function calculateGuide(showErrors=true){
 function unitText(data,index){const levels=data.add_levels||[],qty=data.unit_quantities||[];return levels[index]?fmt(levels[index])+' × '+(qty[index]??0).toLocaleString('ko-KR')+'주':'-'}
 function showGuide(data){
   lastGuide=data;el('gAction').textContent=data.action||'-';el('gAction').className='actionTitle '+actionClass(data.action);
+  if(data.name&&data.name!==data.symbol)trackingName=data.name;renderTrackingName(data.symbol);
   const source=data.source?' · '+String(data.source).toUpperCase():'';
   el('gReason').textContent=(data.reasons||[]).join(' · ');el('gCurrent').textContent=fmt(data.current)+source;el('gNextAdd').textContent=data.next_add_price?fmt(data.next_add_price):'4 Units 완료';
   el('gCommonStop').textContent=fmt(data.common_stop);el('gExit').textContent=fmt(data.exit10);el('gUnitQty').textContent=(data.next_unit_qty??0).toLocaleString('ko-KR')+'주';
@@ -291,7 +301,7 @@ function showGuide(data){
   el('sSellPct').textContent=Number(data.sell_pct)>0?`${Number(data.sell_pct)}% 매도 가이드 · ${fmt(data.sell_price)}`:'매도 대기';
   el('sSellReason').textContent=(data.sell_reasons||[]).join(' · ');el('sCurrent').textContent=fmt(data.current)+source;el('sStop').textContent=fmt(data.common_stop);el('sExit10').textContent=fmt(data.exit10);
   el('sMa5').textContent=fmt(data.ma5);el('sMa10').textContent=fmt(data.ma10);el('sStrategy').textContent=data.exit_strategy==='ma_staged'?'MA5/MA10 분할':'정통 10D Low';
-  const saved=stored();if(saved&&saved.symbol===data.symbol){saved.previous_stop=Math.max(Number(saved.previous_stop||0),Number(data.common_stop||0));saved.exit_strategy=data.exit_strategy;localStorage.setItem(STORAGE_KEY,JSON.stringify(saved))}
+  const saved=stored();if(saved&&saved.symbol===data.symbol){saved.previous_stop=Math.max(Number(saved.previous_stop||0),Number(data.common_stop||0));saved.exit_strategy=data.exit_strategy;saved.name=trackingName;localStorage.setItem(STORAGE_KEY,JSON.stringify(saved));el('trackingState').textContent='추적 저장됨 · '+(trackingName?trackingName+' · ':'')+data.symbol}
 }
 
 async function runCycle({showErrors=false}={}){
@@ -311,16 +321,16 @@ function toggleRealtime(){
 function updateSizingVisibility(){const risk=el('sizingMode').value==='risk';document.querySelectorAll('.fixedField').forEach(node=>node.hidden=risk);document.querySelectorAll('.riskField').forEach(node=>node.hidden=!risk)}
 function saveTracking(){
   const payload=guidePayload();if(!payload.symbol||!payload.entry_price||!payload.n_at_entry){alert('종목코드, Entry 체결가, Entry 당시 ATR을 입력하세요.');return}
-  payload.previous_stop=Math.max(Number(payload.previous_stop||0),Number(lastGuide?.common_stop||0));localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));el('trackingState').textContent='추적 저장됨 · '+payload.symbol;el('trackingCard').classList.add('tracked');
+  payload.previous_stop=Math.max(Number(payload.previous_stop||0),Number(lastGuide?.common_stop||0));localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));el('trackingState').textContent='추적 저장됨 · '+(payload.name?payload.name+' · ':'')+payload.symbol;el('trackingCard').classList.add('tracked');
 }
-function clearTracking(){localStorage.removeItem(STORAGE_KEY);lastGuide=null;el('trackingState').textContent='저장된 추적 종목 없음';el('trackingCard').classList.remove('tracked')}
+function clearTracking(){localStorage.removeItem(STORAGE_KEY);lastGuide=null;trackingName='';renderTrackingName();el('trackingState').textContent='저장된 추적 종목 없음';el('trackingCard').classList.remove('tracked')}
 async function confirmFill(){
   const units=Number(el('gUnits').value);if(units>=4){alert('이미 4 Units가 모두 확정되었습니다.');return}
   const label=units===0?'Unit #1 진입':'Unit #'+(units+1)+' 추매';if(!confirm(label+' 체결을 실제로 완료했습니까? 이 확인 전에는 Unit 수가 자동 증가하지 않습니다.'))return;
   el('gUnits').value=String(units+1);saveTracking();await calculateGuide(true);
 }
 function restoreTracking(){
-  const payload=stored();if(!payload)return false;const demoMigrated=payload.provider==='demo';if(demoMigrated){payload.provider='auto';localStorage.setItem(STORAGE_KEY,JSON.stringify(payload))}el('gSymbol').value=payload.symbol||'';el('gSymbol').dataset.last=payload.symbol||'';el('gEntry').value=payload.entry_price||0;el('gAtr').value=payload.n_at_entry||0;el('gUnits').value=String(payload.filled_units??0);el('exitStrategy').value=payload.exit_strategy||'turtle';el('sizingMode').value=payload.sizing_mode||'fixed';el('unitAmount').value=payload.fixed_unit_amount||10000000;el('accountEquity').value=payload.account_equity||100000000;el('riskPct').value=payload.risk_pct??0.5;el('trackingState').textContent=demoMigrated?'실제 시세로 전환됨 · Entry/ATR 확인 필요 · '+payload.symbol:'추적 저장됨 · '+payload.symbol;el('trackingCard').classList.add('tracked');updateSizingVisibility();calculateGuide(false).catch(()=>{});return true;
+  const payload=stored();if(!payload)return false;const demoMigrated=payload.provider==='demo';if(demoMigrated){payload.provider='auto';localStorage.setItem(STORAGE_KEY,JSON.stringify(payload))}trackingName=payload.name||'';el('gSymbol').value=payload.symbol||'';el('gSymbol').dataset.last=payload.symbol||'';renderTrackingName(payload.symbol||'');el('gEntry').value=payload.entry_price||0;el('gAtr').value=payload.n_at_entry||0;el('gUnits').value=String(payload.filled_units??0);el('exitStrategy').value=payload.exit_strategy||'turtle';el('sizingMode').value=payload.sizing_mode||'fixed';el('unitAmount').value=payload.fixed_unit_amount||10000000;el('accountEquity').value=payload.account_equity||100000000;el('riskPct').value=payload.risk_pct??0.5;el('trackingState').textContent=demoMigrated?'실제 시세로 전환됨 · Entry/ATR 확인 필요 · '+payload.symbol:'추적 저장됨 · '+(trackingName?trackingName+' · ':'')+payload.symbol;el('trackingCard').classList.add('tracked');updateSizingVisibility();calculateGuide(false).catch(()=>{});return true;
 }
 async function chooseSignal(mode){setSignalMode(mode);if(el('scanScope').value==='all'&&fullScanSupported)await startFullMarketScan();else await loadCandidates()}
 
@@ -331,6 +341,7 @@ if(initialScan){
   activeFilters.avgValue10=initialScan.avg_value10_filter_enabled??true;activeFilters.investor=initialScan.investor_filter_enabled??false;activeFilters.todayChange=initialScan.today_change_filter_enabled??false;if(initialScan.provider&&initialScan.provider!=='demo')el('provider').value=initialScan.provider;
 }
 setSignalMode(initialScan?.signal_mode==='breakout'?'breakout':'prealert',{persist:false});renderFilters();updateScanVisibility();
+renderPrealertPct();
 document.querySelectorAll('.sortButton').forEach(button=>button.addEventListener('click',()=>sortCandidates(button.dataset.sort)));
 document.querySelectorAll('[data-remove-filter]').forEach(button=>button.addEventListener('click',()=>setFilter(button.dataset.removeFilter==='avgValue10Filter'?'avgValue10':button.dataset.removeFilter==='investorFilter'?'investor':'todayChange',false)));
 el('addAvgValue10').addEventListener('click',()=>setFilter('avgValue10',true));el('addInvestor').addEventListener('click',()=>setFilter('investor',true));el('addTodayChange').addEventListener('click',()=>setFilter('todayChange',true));
@@ -338,9 +349,10 @@ el('signalPrealert').addEventListener('click',()=>chooseSignal('prealert').catch
 el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('liveBtn').addEventListener('click',toggleRealtime);el('marketScanBtn').addEventListener('click',startFullMarketScan);
 el('scanScope').addEventListener('change',()=>{updateScanVisibility();loadCandidates().catch(error=>el('scanProgress').textContent=error.message)});
 ['marketScope','minMarketCap','minOperatingProfit','prealertPct','minAvgValue10','investorMode','minInvestorBuy','minTodayChange','provider'].forEach(id=>el(id).addEventListener('change',saveScanConfig));
+el('prealertPct').addEventListener('input',renderPrealertPct);el('gSymbol').addEventListener('input',()=>{if(el('gSymbol').value.trim()!==selected?.symbol)trackingName='';renderTrackingName()});
 el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',saveTracking);el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',clearTracking);el('sizingMode').addEventListener('change',updateSizingVisibility);el('exitStrategy').addEventListener('change',()=>calculateGuide(false).catch(()=>{}));
 restoreTracking();
-fetch('/api/health').then(response=>response.json()).then(async data=>{fullScanSupported=Boolean(data.full_market_scan_supported);el('marketScanBtn').disabled=el('scanScope').value==='all'&&!fullScanSupported;el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';realtimeMs=Math.max(3000,Number(data.realtime_poll_seconds||10)*1000);if(!fullScanSupported)el('scanProgress').textContent='Vercel에서는 전체검색을 실행하지 않습니다. 직접 입력 종목을 조회하거나 Oracle scanner 결과를 연결하세요.';await loadCandidates()}).catch(error=>{el('health').textContent='API 미연결';el('scanProgress').textContent='후보 조회 실패: '+error.message});
+fetch('/api/health').then(response=>response.json()).then(async data=>{fullScanSupported=Boolean(data.full_market_scan_supported);el('marketScanBtn').disabled=el('scanScope').value==='all'&&!fullScanSupported;el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';const pollSeconds=Math.max(3,Number(data.realtime_poll_seconds||30));realtimeMs=pollSeconds*1000;el('pollInterval').textContent='주기 '+pollSeconds+'초';if(!fullScanSupported)el('scanProgress').textContent='Vercel에서는 전체검색을 실행하지 않습니다. 직접 입력 종목을 조회하거나 Oracle scanner 결과를 연결하세요.';await loadCandidates()}).catch(error=>{el('health').textContent='API 미연결';el('scanProgress').textContent='후보 조회 실패: '+error.message});
 </script>
 </body>
 </html>

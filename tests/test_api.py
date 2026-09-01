@@ -10,10 +10,12 @@ client = TestClient(app)
 def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     monkeypatch.delenv("KIS_APP_KEY", raising=False)
     monkeypatch.delenv("KIS_APP_SECRET", raising=False)
+    monkeypatch.delenv("REALTIME_POLL_SECONDS", raising=False)
     assert client.get("/").status_code == 200
     health = client.get("/api/health")
     assert health.status_code == 200
     assert health.json()["kis_configured"] is False
+    assert health.json()["realtime_poll_seconds"] == 30
     candidates = client.get("/api/candidates", params={"provider": "demo", "symbols": "000660"})
     assert candidates.status_code == 200
     assert candidates.json()["items"][0]["source"] == "demo"

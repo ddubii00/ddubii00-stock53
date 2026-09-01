@@ -119,7 +119,7 @@ def health():
         "provider_mode": mode,
         "provider_chain": getattr(provider, "name", provider.__class__.__name__),
         "kis_configured": bool(os.getenv("KIS_APP_KEY") and os.getenv("KIS_APP_SECRET")),
-        "realtime_poll_seconds": max(3, int(os.getenv("REALTIME_POLL_SECONDS", "10"))),
+        "realtime_poll_seconds": max(3, int(os.getenv("REALTIME_POLL_SECONDS", "30"))),
         "full_market_scan_supported": app_mode != "vercel",
         "realtime_note": (
             "Vercel realtime uses browser polling; no background worker or WebSocket runs in serverless."
