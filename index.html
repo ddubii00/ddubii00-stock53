@@ -23,7 +23,7 @@
     <div class="buttons">
       <select id="provider" aria-label="데이터 공급자"><option value="auto">AUTO</option><option value="kis">KIS</option><option value="naver">NAVER</option><option value="krx">KRX</option><option value="demo">DEMO</option></select>
       <button id="refreshBtn" class="button primary" type="button">↻ 새로고침</button>
-      <button id="liveBtn" class="button live" type="button">실시간</button>
+      <button id="liveBtn" class="button live" type="button">실시간 검색</button>
       <span id="pollInterval" class="muted tiny">주기 30초</span>
       <span id="scanState" class="status" aria-live="polite">대기</span>
       <span id="health" class="status">API 확인중</span>
@@ -63,19 +63,19 @@
       <span id="lastUpdated" class="muted tiny right">마지막 조회: -</span>
     </div>
     <div id="scanProgress" class="muted tiny scanProgress" aria-live="polite">저장된 결과를 조회하거나 전체시장 새 검색을 눌러주세요.</div>
-    <div class="notice" style="margin:10px 0 0"><b>버튼 차이:</b> <b>↻ 새로고침</b>은 마지막 후보 결과와 선택 종목 시세를 한 번 다시 조회합니다. <b>전체시장 새 검색</b>은 KOSPI·KOSDAQ 상장주식 목록부터 필터와 신호를 전부 다시 계산합니다. Vercel에서는 버튼을 누른 요청 안에서 수동 1회만 실행하며 실시간 반복 검색은 하지 않습니다.</div>
+    <div class="notice" style="margin:10px 0 0"><b>버튼 차이:</b> <b>↻ 새로고침</b>은 마지막 후보 결과와 선택 종목 시세를 한 번 다시 조회합니다. <b>전체시장 새 검색</b>은 KOSPI·KOSDAQ 전체를 한 번 계산합니다. Oracle의 <b>실시간 검색</b>은 그 결과에서 나온 PREALERT/BREAKOUT 종목만 30초마다 다시 판정하며 전체시장·재무를 반복 조회하지 않습니다. Vercel 전체시장 검색은 버튼을 누른 요청 안에서 수동 1회만 실행합니다.</div>
   </section>
   <div class="notice"><b>신호:</b> PREALERT는 현재가가 직전 20일 High 아래 설정 범위에 접근한 종목입니다. BREAKOUT은 어제까지 돌파하지 않았고 오늘 현재가 또는 장중 고가가 처음 직전 20일 High를 넘은 종목입니다. 추가 필터를 통과하지 못한 종목은 결과에 표시하지 않습니다. Naver 수급액은 순매수수량×가격의 추정값이며 KIS 공식 당일 투자자 데이터는 장 종료 후 제공됩니다.</div>
-  <section class="signalSection"><h3 class="signalSectionTitle green">BREAKOUT <span id="breakoutCount" class="countBadge">0개</span></h3><div class="tableWrap">
-    <table>
-      <thead><tr><th><button class="sortButton" data-sort="stage">상태</button></th><th><button class="sortButton" data-sort="name">종목</button></th><th><button class="sortButton" data-sort="market">시장</button></th><th><button class="sortButton" data-sort="asset_type">유형</button></th><th><button class="sortButton" data-sort="market_cap_100m">시총(억)</button></th><th><button class="sortButton" data-sort="operating_profit_100m">영업이익(억)</button></th><th><button class="sortButton" data-sort="avg_value10">10D거래대금(억)</button></th><th><button class="sortButton" data-sort="today_change_pct">당일%</button></th><th><button class="sortButton" data-sort="investor_net">외인/기관(억)</button></th><th><button class="sortButton" data-sort="current">현재가</button></th><th><button class="sortButton" data-sort="breakout20">20D 돌파가</button></th><th><button class="sortButton" data-sort="distance_pct">거리</button></th><th><button class="sortButton" data-sort="score">Quality</button></th><th><button class="sortButton" data-sort="source">Source</button></th></tr></thead>
-      <tbody id="breakoutBody"><tr><td colspan="14" class="muted" style="text-align:center">BREAKOUT 종목이 없습니다.</td></tr></tbody>
-    </table>
-  </div></section>
   <section class="signalSection"><h3 class="signalSectionTitle yellow">PREALERT <span id="prealertCount" class="countBadge">0개</span></h3><div class="tableWrap">
     <table>
       <thead><tr><th><button class="sortButton" data-sort="stage">상태</button></th><th><button class="sortButton" data-sort="name">종목</button></th><th><button class="sortButton" data-sort="market">시장</button></th><th><button class="sortButton" data-sort="asset_type">유형</button></th><th><button class="sortButton" data-sort="market_cap_100m">시총(억)</button></th><th><button class="sortButton" data-sort="operating_profit_100m">영업이익(억)</button></th><th><button class="sortButton" data-sort="avg_value10">10D거래대금(억)</button></th><th><button class="sortButton" data-sort="today_change_pct">당일%</button></th><th><button class="sortButton" data-sort="investor_net">외인/기관(억)</button></th><th><button class="sortButton" data-sort="current">현재가</button></th><th><button class="sortButton" data-sort="breakout20">20D 돌파가</button></th><th><button class="sortButton" data-sort="distance_pct">거리</button></th><th><button class="sortButton" data-sort="score">Quality</button></th><th><button class="sortButton" data-sort="source">Source</button></th></tr></thead>
       <tbody id="prealertBody"><tr><td colspan="14" class="muted" style="text-align:center">PREALERT 종목이 없습니다.</td></tr></tbody>
+    </table>
+  </div></section>
+  <section class="signalSection"><h3 class="signalSectionTitle green">BREAKOUT <span id="breakoutCount" class="countBadge">0개</span></h3><div class="tableWrap">
+    <table>
+      <thead><tr><th><button class="sortButton" data-sort="stage">상태</button></th><th><button class="sortButton" data-sort="name">종목</button></th><th><button class="sortButton" data-sort="market">시장</button></th><th><button class="sortButton" data-sort="asset_type">유형</button></th><th><button class="sortButton" data-sort="market_cap_100m">시총(억)</button></th><th><button class="sortButton" data-sort="operating_profit_100m">영업이익(억)</button></th><th><button class="sortButton" data-sort="avg_value10">10D거래대금(억)</button></th><th><button class="sortButton" data-sort="today_change_pct">당일%</button></th><th><button class="sortButton" data-sort="investor_net">외인/기관(억)</button></th><th><button class="sortButton" data-sort="current">현재가</button></th><th><button class="sortButton" data-sort="breakout20">20D 돌파가</button></th><th><button class="sortButton" data-sort="distance_pct">거리</button></th><th><button class="sortButton" data-sort="score">Quality</button></th><th><button class="sortButton" data-sort="source">Source</button></th></tr></thead>
+      <tbody id="breakoutBody"><tr><td colspan="14" class="muted" style="text-align:center">BREAKOUT 종목이 없습니다.</td></tr></tbody>
     </table>
   </div></section>
 
@@ -144,7 +144,7 @@ const eok=n=>Number.isFinite(Number(n))?(Number(n)/100000000).toFixed(1)+'억':'
 const num=id=>Number(document.getElementById(id).value||0);
 const el=id=>document.getElementById(id);
 let selected=null,lastGuide=null,realtimeTimer=null,quoteTimer=null,cycleBusy=false,quoteBusy=false,fullScanBusy=false,realtimeMs=30000,quoteMs=3000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false,manualFullScanSupported=false,healthLoaded=false,trackingName='',appMode='vercel';
-let signalMode='actionable',candidateItems=[],candidateNote='',sortState={key:'market_cap_100m',direction:'desc'};
+let signalMode='actionable',candidateItems=[],liveSeedItems=[],candidateNote='',sortState={key:'market_cap_100m',direction:'desc'};
 const activeFilters={avgValue10:true,investor:false,todayChange:false};
 
 function actionClass(action){return action==='ADD_NOW'||action==='ENTRY_NOW'?'green':action==='STOP_NOW'||action==='EXIT_NOW'?'red':action==='WAIT_ENTRY'?'yellow':'blue'}
@@ -280,6 +280,9 @@ function renderCandidates(){
   el('breakoutCount').textContent=breakouts.length.toLocaleString('ko-KR')+'개';el('prealertCount').textContent=prealerts.length.toLocaleString('ko-KR')+'개';
   updateSortHeaders();
 }
+function setLiveSeedItems(items){
+  liveSeedItems=(items||[]).filter(item=>item.stage==='PREALERT'||item.stage==='BREAKOUT').map(item=>({...item}));
+}
 function sortCandidates(key){sortState=sortState.key===key?{key,direction:sortState.direction==='desc'?'asc':'desc'}:{key,direction:'desc'};renderCandidates()}
 
 function fullScanCountText(data){
@@ -295,7 +298,7 @@ async function loadCandidates(){
     if(snapshot){
       applyFullScanResult(snapshot.data||snapshot,{savedAt:snapshot.saved_at||null});
     }else{
-      candidateItems=[];candidateNote='저장된 Vercel 수동 검색 결과가 없습니다.';renderCandidates();
+      candidateItems=[];setLiveSeedItems([]);candidateNote='저장된 Vercel 수동 검색 결과가 없습니다.';renderCandidates();
       el('providerNote').textContent='Vercel 수동 검색 · 버튼을 누를 때만 Naver 전체시장을 1회 계산합니다.';
       el('scanProgress').textContent='전체시장 새 검색을 눌러 현재 필터로 검색하세요.';
     }
@@ -312,17 +315,18 @@ async function loadCandidates(){
   if(scope==='watchlist'){
     const errors=received.filter(item=>item.stage==='ERROR').length;
     candidateItems=received.filter(item=>item.stage==='ERROR'||item.stage==='PREALERT'||item.stage==='BREAKOUT');
+    setLiveSeedItems([]);
     const breakouts=candidateItems.filter(item=>item.stage==='BREAKOUT').length,prealerts=candidateItems.filter(item=>item.stage==='PREALERT').length;
     candidateNote=`직접 입력 ${received.length.toLocaleString('ko-KR')}개 조회 완료 · BREAKOUT ${breakouts}개 · PREALERT ${prealerts}개${errors?` · 오류 ${errors}개`:''}`;
     el('scanProgress').textContent=candidateNote+' · 신호가 없으면 표가 비어 있는 것이 정상입니다.';
-  }else{candidateItems=received;candidateNote=data.note}
+  }else{candidateItems=received;setLiveSeedItems(received);candidateNote=data.note}
   renderCandidates();
   const current=candidateItems.find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||candidateItems.find(item=>item.stage!=='ERROR');if(current)showCandidate(current,{populateTracking:!stored()});
 }
 
 function applyFullScanResult(data,{savedAt=null}={}){
   const options=data.options||{},market=options.market==='KOSPI'?'KOSPI만':options.market==='KOSDAQ'?'KOSDAQ만':'KOSPI+KOSDAQ';
-  candidateItems=data.items||[];candidateNote=data.note||'조건에 맞는 후보가 없습니다.';renderCandidates();
+  candidateItems=data.items||[];setLiveSeedItems(candidateItems);candidateNote=data.note||'조건에 맞는 후보가 없습니다.';renderCandidates();
   const duration=Number.isFinite(Number(data.duration_seconds))?` · ${Number(data.duration_seconds).toFixed(1)}초`:'';
   const saved=savedAt?` · 저장 ${new Date(savedAt).toLocaleString('ko-KR')}`:'';
   el('providerNote').textContent='Provider: '+String(data.provider||'auto').toUpperCase()+' · '+candidateNote;
@@ -415,12 +419,32 @@ async function refreshLiveQuotes(){
   }catch(error){el('scanState').title='실시간 시세 갱신 실패: '+error.message}
   finally{quoteBusy=false}
 }
+async function refreshLiveCandidateSignals(){
+  if(cycleBusy||fullScanBusy)return;
+  const seeds=liveSeedItems.filter(item=>item.symbol&&item.stage!=='ERROR');
+  if(!seeds.length){el('scanProgress').textContent='실시간 검색할 후보가 없습니다. 먼저 “전체시장 새 검색”을 실행하세요.';return}
+  cycleBusy=true;el('scanState').textContent='후보 재판정중';
+  try{
+    const params=new URLSearchParams({provider:el('provider').value,scope:'watchlist',symbols:seeds.map(item=>item.symbol).join(','),prealert_pct:String(num('prealertPct')),include_filtered:'true'}),{data}=await fetchJson('/api/candidates?'+params.toString()),liveRows=data.items||[];
+    const liveBySymbol=new Map(liveRows.filter(item=>item.stage!=='ERROR').map(item=>[item.symbol,item])),liveErrors=new Map(liveRows.filter(item=>item.stage==='ERROR').map(item=>[item.symbol,item.error||'조회 실패']));
+    liveSeedItems=seeds.map(base=>{const live=liveBySymbol.get(base.symbol);return live?{...base,...live,name:base.name||live.name,market:base.market,asset_type:base.asset_type,market_cap_100m:base.market_cap_100m,operating_profit_100m:base.operating_profit_100m,live_error:null}:{...base,live_error:liveErrors.get(base.symbol)||'실시간 응답 없음'}});
+    const todayThreshold=num('minTodayChange');
+    candidateItems=liveSeedItems.filter(item=>!item.live_error&&(item.stage==='PREALERT'||item.stage==='BREAKOUT')&&!(item.stage==='BREAKOUT'&&activeFilters.todayChange&&Number(item.today_change_pct)<todayThreshold));
+    const breakouts=candidateItems.filter(item=>item.stage==='BREAKOUT').length,prealerts=candidateItems.filter(item=>item.stage==='PREALERT').length,errorCount=liveSeedItems.filter(item=>item.live_error).length,errors=errorCount?` · 조회 오류 ${errorCount}개(다음 주기 재시도)`:'' ,truncated=data.truncated?` · 상한 ${Number(data.scanned_count||0).toLocaleString('ko-KR')}개만 조회`:'';
+    candidateNote=`최초 전체시장 후보 ${seeds.length.toLocaleString('ko-KR')}개 재판정 · PREALERT ${prealerts}개 · BREAKOUT ${breakouts}개${errors}${truncated}`;
+    el('scanProgress').textContent=candidateNote+' · 전체시장·재무 재검색 없음';renderCandidates();
+    const current=candidateItems.find(item=>item.symbol===selected?.symbol);if(current)showCandidate(current,{populateTracking:false});
+    const payload=guidePayload();if(payload.symbol&&payload.entry_price)await calculateGuide(false).catch(()=>{});
+    el('lastUpdated').textContent='마지막 실시간 후보 조회: '+new Date().toLocaleString('ko-KR');
+  }catch(error){el('scanProgress').textContent='실시간 후보 재판정 실패: '+error.message}
+  finally{cycleBusy=false;el('scanState').textContent=realtimeTimer?'검색중':'대기'}
+}
 async function realtimeCandidateCycle(){
-  if(fullScanSupported&&el('scanScope').value==='all')return startFullMarketScan({silent:true});
+  if(fullScanSupported&&el('scanScope').value==='all')return refreshLiveCandidateSignals();
   return runCycle();
 }
 function toggleRealtime(){
-  if(realtimeTimer){clearInterval(realtimeTimer);realtimeTimer=null;if(quoteTimer){clearInterval(quoteTimer);quoteTimer=null}el('liveBtn').classList.remove('active');el('liveBtn').textContent='실시간';el('scanState').textContent='대기';return}
+  if(realtimeTimer){clearInterval(realtimeTimer);realtimeTimer=null;if(quoteTimer){clearInterval(quoteTimer);quoteTimer=null}el('liveBtn').classList.remove('active');el('liveBtn').textContent='실시간 검색';el('scanState').textContent='대기';return}
   if(healthLoaded&&!fullScanSupported&&el('scanScope').value==='all')el('scanProgress').textContent='Vercel 실시간 30초 polling은 선택 종목 가이드만 갱신합니다. 전체시장 후보는 “전체시장 새 검색”을 눌렀을 때만 다시 계산합니다.';
   el('liveBtn').classList.add('active');el('liveBtn').textContent='● 검색중';el('scanState').textContent='검색중';realtimeCandidateCycle();realtimeTimer=setInterval(realtimeCandidateCycle,realtimeMs);
   if(fullScanSupported){refreshLiveQuotes();quoteTimer=setInterval(refreshLiveQuotes,quoteMs)}

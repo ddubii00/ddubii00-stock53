@@ -41,6 +41,41 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     assert all(item["change_pct"] is not None for item in batch_quotes.json()["items"])
 
 
+def test_oracle_live_candidate_subset_is_not_limited_to_vercel_default(monkeypatch):
+    symbols = ",".join(f"{index:06d}" for index in range(1, 13))
+    monkeypatch.setenv("APP_MODE", "oracle")
+    monkeypatch.delenv("ORACLE_LIVE_SCAN_MAX_SYMBOLS", raising=False)
+    response = client.get(
+        "/api/candidates",
+        params={"provider": "demo", "scope": "watchlist", "symbols": symbols},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["requested_count"] == 12
+    assert payload["scanned_count"] == 12
+    assert payload["truncated"] is False
+    assert len(payload["items"]) == 12
+    assert all("today_change_pct" in item for item in payload["items"])
+
+
+def test_vercel_watchlist_keeps_small_request_limit(monkeypatch):
+    symbols = ",".join(f"{index:06d}" for index in range(1, 13))
+    monkeypatch.setenv("APP_MODE", "vercel")
+    monkeypatch.delenv("VERCEL_SCAN_MAX_SYMBOLS", raising=False)
+    response = client.get(
+        "/api/candidates",
+        params={"provider": "demo", "scope": "watchlist", "symbols": symbols},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["requested_count"] == 12
+    assert payload["scanned_count"] == 8
+    assert payload["truncated"] is True
+    assert len(payload["items"]) == 8
+
+
 def test_oracle_position_can_be_closed_after_sell(monkeypatch, tmp_path):
     monkeypatch.setenv("APP_MODE", "oracle")
     monkeypatch.setenv("DB_PATH", str(tmp_path / "close-position.db"))

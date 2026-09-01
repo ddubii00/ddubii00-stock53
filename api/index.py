@@ -264,8 +264,22 @@ def candidates(
         }
     if scope != "watchlist":
         raise HTTPException(status_code=422, detail="scope must be watchlist or all")
-    selected = [item.strip() for item in symbols.split(",") if item.strip()] if symbols else list(DEFAULT_SYMBOLS)
-    max_symbols = max(1, int(os.getenv("VERCEL_SCAN_MAX_SYMBOLS", "8")))
+    selected = (
+        list(dict.fromkeys(item.strip() for item in symbols.split(",") if item.strip()))
+        if symbols
+        else list(DEFAULT_SYMBOLS)
+    )
+    requested_count = len(selected)
+    app_mode = os.getenv("APP_MODE", "vercel")
+    max_symbols = max(
+        1,
+        int(
+            os.getenv(
+                "VERCEL_SCAN_MAX_SYMBOLS" if app_mode == "vercel" else "ORACLE_LIVE_SCAN_MAX_SYMBOLS",
+                "8" if app_mode == "vercel" else "200",
+            )
+        ),
+    )
     selected = selected[:max_symbols]
     market_provider = _provider(provider)
     rows: list[dict] = []
@@ -273,7 +287,7 @@ def candidates(
         try:
             symbol = _valid_symbol(raw_symbol)
             snapshot = get_market_snapshot(market_provider, symbol, HISTORY_COUNT)
-            validate_snapshot_price_scale(snapshot)
+            today_change_pct = validate_snapshot_price_scale(snapshot)
             result = analyze(
                 snapshot.bars,
                 current=snapshot.quote.price,
@@ -289,6 +303,7 @@ def candidates(
                 name=DEFAULT_SYMBOLS.get(symbol, symbol),
                 current=snapshot.quote.price,
                 today_high=snapshot.quote.day_high,
+                today_change_pct=today_change_pct,
                 source=snapshot.quote.source,
             )
             if include_filtered or item["stage"] != "FILTERED":
@@ -302,7 +317,14 @@ def candidates(
     return {
         "provider": getattr(market_provider, "name", market_provider.__class__.__name__),
         "full_market_scan": False,
-        "note": "Vercel은 소수 watchlist 탐색용입니다. 실전 전체시장 감시는 Oracle + KIS를 사용하세요.",
+        "requested_count": requested_count,
+        "scanned_count": len(selected),
+        "truncated": requested_count > len(selected),
+        "note": (
+            "Vercel은 소수 watchlist 탐색용입니다. 실전 전체시장 감시는 Oracle + KIS를 사용하세요."
+            if app_mode == "vercel"
+            else "최초 전체시장 결과 종목만 Oracle/KIS로 재판정했습니다."
+        ),
         "items": rows,
     }
 

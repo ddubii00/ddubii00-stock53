@@ -121,17 +121,18 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 ## UI 동작
 
 - `↻ 새로고침`: 현재 범위의 후보 snapshot과 저장된 추적종목 가이드를 각각 한 번 조회. 전체 상장주식 목록·재무·신호를 처음부터 다시 계산하지 않음
-- `실시간`: Oracle에서 PREALERT/BREAKOUT 후보를 기본 30초 주기로 다시 검색하고, 표시 종목 현재가·등락률은 기본 3초 주기로 별도 갱신
-- 후보/시세 간격: `REALTIME_POLL_SECONDS=30`, `QUOTE_POLL_SECONDS=3`. 전체 검색이 30초보다 오래 걸리면 중복 실행하지 않음
+- `실시간 검색`: Oracle에서 마지막 `전체시장 새 검색`이 찾은 PREALERT/BREAKOUT 종목만 고정 후보군으로 잡아 기본 30초마다 신호를 다시 계산. 이때 전체 종목 목록·재무 필터를 반복 조회하지 않음
+- 고정 후보가 잠시 WATCH로 바뀌어 표에서 사라져도 실시간 세션의 후보군에는 남으므로 다시 PREALERT가 되거나 BREAKOUT으로 전환될 수 있음
+- 후보/시세 간격: `REALTIME_POLL_SECONDS=30`, `QUOTE_POLL_SECONDS=3`. 표시 종목의 현재가·등락률은 별도 3초 polling으로 갱신하며 중복 fetch는 실행하지 않음
 - 중복 fetch cycle 방지
 - 후보 행 클릭: 상세·Entry/ATR 기본값 표시. 종목명 클릭 시 `stock.naver.com` 해당 종목을 새 탭으로 엶. 저장된 추적 종목은 자동 후보 선택으로 덮어쓰지 않음
 - 검색 범위: `KOSPI/KOSDAQ 전체` 또는 `직접 입력 종목`
-- PREALERT와 BREAKOUT은 한 번에 동시 검색하고 두 표로 분리. 종목명만 표시하고 등락률은 상승 빨간·하락 파랑으로 표시
+- PREALERT와 BREAKOUT은 한 번에 동시 검색하고 PREALERT 표를 위에, BREAKOUT 표를 아래에 분리. 종목명만 표시하고 등락률은 상승 빨간·하락 파랑으로 표시
 - 전체시장 필터: 시장, ETF 추가 여부, 최소 시가총액, 최소 영업이익, 10D 평균거래대금, 외인/기관 수급, BREAKOUT 당일 상승률
 - 표 머리글: 첫 클릭 내림차순, 두 번째 클릭 오름차순
 - `전체시장 새 검색`: 로컬/Oracle에서 KOSPI/KOSDAQ 상장주식 목록부터 시총·영업이익·선택 필터·신호를 전부 다시 계산하고 진행률 표시
 - Vercel의 `전체시장 새 검색`: 클릭한 요청 안에서 Naver 전체시장을 수동 1회 계산하고 결과를 브라우저에 보관. background worker나 반복 전체검색은 실행하지 않음
-- 전체검색 중복 실행 방지, 일반 실시간 polling은 마지막 snapshot만 재조회
+- 전체검색 중복 실행 방지. Oracle 실시간 검색 후보 상한은 `ORACLE_LIVE_SCAN_MAX_SYMBOLS`(기본 200)로 조정 가능하며 상한을 넘으면 화면에 잘림 여부를 표시
 - Vercel 상태: `localStorage`
 - `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가
 - 추적 종목: 여러 종목 추가·변경·보기, 총 투자한도와 1 Unit(총액÷4) 표시, 매도 완료 후 삭제

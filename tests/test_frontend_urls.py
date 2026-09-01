@@ -78,6 +78,26 @@ def test_oracle_health_capability_selects_the_full_market_scan_api():
     assert "fetchJson('/api/full-market-scans'" in source
 
 
+def test_live_mode_rechecks_only_the_initial_full_market_candidates():
+    source = INDEX.read_text(encoding="utf-8")
+    cycle_start = source.index("async function realtimeCandidateCycle")
+    cycle_end = source.index("function toggleRealtime", cycle_start)
+    cycle = source[cycle_start:cycle_end]
+    assert "return refreshLiveCandidateSignals()" in cycle
+    assert "startFullMarketScan" not in cycle
+    assert "symbols:seeds.map(item=>item.symbol).join(',')" in source
+    assert "include_filtered:'true'" in source
+    assert "조회 오류 ${errorCount}개(다음 주기 재시도)" in source
+    assert "전체시장·재무 재검색 없음" in source
+
+
+def test_prealert_table_is_rendered_before_breakout_table():
+    source = INDEX.read_text(encoding="utf-8")
+    prealert = '<section class="signalSection"><h3 class="signalSectionTitle yellow">PREALERT'
+    breakout = '<section class="signalSection"><h3 class="signalSectionTitle green">BREAKOUT'
+    assert source.index(prealert) < source.index(breakout)
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is needed for frontend JS test")
 def test_resolver_does_not_modify_external_links():
     external = "https://stock.naver.com/domestic/stock/005930"
