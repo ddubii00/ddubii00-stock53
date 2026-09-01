@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import json
 from pathlib import Path
 import time
 import tomllib
@@ -12,6 +13,9 @@ client = TestClient(app)
 def test_vercel_fastapi_entrypoint_is_explicit():
     config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     assert config["tool"]["vercel"]["entrypoint"] == "api.index:app"
+    deployment = json.loads(Path("vercel.json").read_text(encoding="utf-8"))
+    assert {build["src"] for build in deployment["builds"]} == {"api/index.py", "index.html"}
+    assert deployment["routes"][0] == {"src": "/api/(.*)", "dest": "api/index.py"}
 
 
 def test_required_vercel_routes_work_without_kis_keys(monkeypatch):

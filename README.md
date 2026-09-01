@@ -162,7 +162,7 @@ Quality Score는 다음 지표로 후보를 정렬하기 위한 정보이며 돌
 
 ## Vercel
 
-GitHub 저장소 root를 Vercel에서 Import하면 됩니다. `pyproject.toml`의 `[tool.vercel] entrypoint = "api.index:app"`이 FastAPI 진입점을 명시하고 root `index.html`은 UI입니다.
+GitHub 저장소 root를 Vercel에서 Import하면 됩니다. `pyproject.toml`의 `[tool.vercel] entrypoint = "api.index:app"`이 FastAPI 진입점을 명시합니다. `vercel.json`은 `index.html` 정적 UI와 `api/index.py` Python 함수를 각각 빌드하고 `/api/*`를 FastAPI로 전달합니다. 따라서 Vercel 프로젝트가 `Other` 프리셋으로 잡혀도 API 함수가 누락되지 않습니다.
 
 권장 환경변수:
 
