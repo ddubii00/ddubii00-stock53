@@ -83,10 +83,14 @@ def init_db() -> None:
               processed INTEGER NOT NULL DEFAULT 0,
               total INTEGER NOT NULL DEFAULT 0,
               listed_count INTEGER NOT NULL DEFAULT 0,
+              stock_count INTEGER NOT NULL DEFAULT 0,
+              etf_count INTEGER NOT NULL DEFAULT 0,
               kospi_count INTEGER NOT NULL DEFAULT 0,
               kosdaq_count INTEGER NOT NULL DEFAULT 0,
               universe_count INTEGER NOT NULL DEFAULT 0,
               fundamentals_passed INTEGER NOT NULL DEFAULT 0,
+              stock_fundamentals_passed INTEGER NOT NULL DEFAULT 0,
+              etf_scanned INTEGER NOT NULL DEFAULT 0,
               error_count INTEGER NOT NULL DEFAULT 0,
               message TEXT NOT NULL DEFAULT '',
               started_at TEXT NOT NULL,
@@ -117,7 +121,15 @@ def init_db() -> None:
                 conn.execute(
                     "ALTER TABLE full_market_scans ADD COLUMN options_json TEXT NOT NULL DEFAULT '{}'"
                 )
-            for column in ("listed_count", "kospi_count", "kosdaq_count"):
+            for column in (
+                "listed_count",
+                "stock_count",
+                "etf_count",
+                "kospi_count",
+                "kosdaq_count",
+                "stock_fundamentals_passed",
+                "etf_scanned",
+            ):
                 if column not in scan_columns:
                     conn.execute(
                         f"ALTER TABLE full_market_scans ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0"
@@ -351,10 +363,14 @@ def update_full_market_scan(scan_id: int, **fields) -> None:
         "processed",
         "total",
         "listed_count",
+        "stock_count",
+        "etf_count",
         "kospi_count",
         "kosdaq_count",
         "universe_count",
         "fundamentals_passed",
+        "stock_fundamentals_passed",
+        "etf_scanned",
         "error_count",
         "message",
         "finished_at",
@@ -389,18 +405,23 @@ def finish_full_market_scan(scan_id: int, items: list[dict], **summary) -> None:
             """
             UPDATE full_market_scans
             SET status='COMPLETED',phase='completed',processed=?,total=?,
-                listed_count=?,kospi_count=?,kosdaq_count=?,universe_count=?,
-                fundamentals_passed=?,error_count=?,message=?,finished_at=?
+                listed_count=?,stock_count=?,etf_count=?,kospi_count=?,kosdaq_count=?,
+                universe_count=?,fundamentals_passed=?,stock_fundamentals_passed=?,
+                etf_scanned=?,error_count=?,message=?,finished_at=?
             WHERE id=?
             """,
             (
                 int(summary.get("processed", 0)),
                 int(summary.get("total", 0)),
                 int(summary.get("listed_count", 0)),
+                int(summary.get("stock_count", 0)),
+                int(summary.get("etf_count", 0)),
                 int(summary.get("kospi_count", 0)),
                 int(summary.get("kosdaq_count", 0)),
                 int(summary.get("universe_count", 0)),
                 int(summary.get("fundamentals_passed", 0)),
+                int(summary.get("stock_fundamentals_passed", 0)),
+                int(summary.get("etf_scanned", 0)),
                 int(summary.get("error_count", 0)),
                 summary.get("message", f"후보 {len(items)}개 선정"),
                 finished_at,

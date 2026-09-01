@@ -134,3 +134,25 @@ def test_vercel_allows_manual_one_request_full_market_scan(monkeypatch, tmp_path
     assert payload["kospi_count"] == 8
     assert payload["kosdaq_count"] == 7
     assert all(item["stage"] == "PREALERT" for item in payload["items"])
+
+
+def test_manual_full_market_scan_can_include_etf(monkeypatch, tmp_path):
+    monkeypatch.setenv("APP_MODE", "vercel")
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "manual-etf-scan.db"))
+    response = client.post(
+        "/api/full-market-scan-once",
+        json={
+            "provider": "demo",
+            "include_etf": True,
+            "signal_mode": "actionable",
+            "avg_value10_filter_enabled": False,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["options"]["include_etf"] is True
+    assert payload["stock_count"] == 15
+    assert payload["etf_count"] == 2
+    assert payload["listed_count"] == 17
+    assert any(item["asset_type"] == "ETF" for item in payload["items"])

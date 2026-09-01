@@ -9,6 +9,7 @@
 *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Noto Sans KR",sans-serif}.wrap{max-width:1280px;margin:auto;padding:24px}.top{display:flex;gap:18px;justify-content:space-between;align-items:flex-end;margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.13em;color:var(--blue);font-weight:800}.title{font-size:32px;font-weight:850;margin:5px 0}.muted{color:var(--muted)}.tiny{font-size:12px}.status{border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:13px}.buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.button,select,input{appearance:none;background:#16202b;border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:10px}.button{cursor:pointer;font-weight:750}.button:hover{border-color:#55708d}.button:disabled{opacity:.55;cursor:not-allowed}.button.primary{background:#0d4c6b;border-color:#1679a7}.button.live{min-width:96px}.button.live.active{background:#15803d;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12)}.button.success{background:#14532d;border-color:#22c55e}.button.danger{border-color:#8b2525}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.card,.actionBox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}.hero{padding:20px}.signal{font-size:13px;font-weight:800}.big{font-size:28px;font-weight:850;margin:6px 0}.yellow{color:var(--yellow)}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.section{font-size:18px;font-weight:750;margin:26px 0 12px}.notice{padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px;line-height:1.55;margin-bottom:14px}.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:1180px;background:var(--panel)}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;white-space:nowrap}th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}tbody tr{cursor:pointer}tbody tr:hover{background:#16202b}.stage{font-weight:850}.error{color:var(--red)}.kv{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:10px 0;font-size:14px}.kv:first-child{border-top:0}.bar{height:8px;background:#202b37;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--blue)}.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}.field input,.field select{width:100%}.actionBox{background:var(--panel2)}.actionTitle{font-size:26px;font-weight:900}.tracked{border-color:#2563eb}.right{margin-left:auto}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin:3px 3px 0 0;font-size:12px}.foot{margin:28px 0;color:var(--muted);font-size:13px;line-height:1.65}.scanPanel{margin-bottom:10px}.scanProgress{min-height:20px;margin-top:10px}@media(max-width:720px){.top{align-items:flex-start;flex-direction:column}.title{font-size:27px}.right{margin-left:0}.wrap{padding:16px}#symbolsInput{min-width:100%!important}}
 .signalButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}.signalButton{border:1px solid var(--line);background:#0e151d;color:var(--muted);border-radius:9px;padding:9px;cursor:pointer;font-weight:850}.signalButton.active[data-signal="prealert"]{color:var(--yellow);border-color:#a88412;background:#3d3308}.signalButton.active[data-signal="breakout"]{color:var(--green);border-color:#16823d;background:#0d3b20}.filterLabel{font-size:12px;color:var(--muted);margin:14px 0 8px}.filterList{display:flex;gap:8px;flex-wrap:wrap}.filterChip{display:flex;align-items:center;gap:7px;padding:7px 8px 7px 11px;border:1px solid #38506a;border-radius:12px;background:#111d29;font-size:12px}.filterChip input{width:92px;padding:7px}.filterChip select{width:auto;padding:7px}.filterX{border:0;background:transparent;color:#a9bbcc;font-size:20px;line-height:1;cursor:pointer;padding:0 3px}.addFilter{padding:7px 10px;font-size:12px}.sortButton{border:0;background:transparent;color:inherit;font:inherit;font-weight:800;cursor:pointer;padding:0;white-space:nowrap}.sortButton:hover{color:var(--blue)}.sortButton.active{color:var(--blue)}.sellRule{line-height:1.65}.sellAction{font-size:24px;font-weight:900;margin:6px 0}.changeUp{color:var(--green);font-weight:800}.changeDown{color:var(--red);font-weight:800}.changeFlat{color:var(--blue);font-weight:800}
 .stockLink{color:#7dd3fc;text-decoration:none;font-weight:800}.stockLink:hover{text-decoration:underline}.stockLink::after{content:' ↗';font-size:10px;color:var(--muted)}
+.checkOption{display:flex!important;align-items:center;gap:8px;color:var(--text)!important;font-size:14px!important;padding:9px 0}.checkOption input{width:auto!important;margin:0;accent-color:var(--green)}
 </style>
 </head>
 <body>
@@ -42,6 +43,7 @@
     <div class="formGrid">
       <div class="field"><label for="scanScope">검색 범위</label><select id="scanScope"><option value="all" selected>KOSPI/KOSDAQ 전체 · 수동 검색</option><option value="watchlist">직접 입력 종목</option></select></div>
       <div class="field fullMarketField"><label for="marketScope">시장 필터</label><select id="marketScope"><option value="ALL">KOSPI + KOSDAQ 전체</option><option value="KOSPI">KOSPI만</option><option value="KOSDAQ">KOSDAQ만</option></select></div>
+      <div class="field fullMarketField"><label>검색 자산</label><label class="checkOption" for="includeEtf"><input id="includeEtf" type="checkbox"> ETF도 추가 검색</label><div class="muted tiny">ETF는 시총·영업이익·수급 필터 면제</div></div>
       <div class="field fullMarketField"><label for="minMarketCap">최소 시가총액 (억원)</label><input id="minMarketCap" type="number" value="500" min="0" step="100"></div>
       <div class="field fullMarketField"><label for="minOperatingProfit">최소 영업이익 (억원)</label><input id="minOperatingProfit" type="number" value="50" step="10"></div>
       <div class="field fullMarketField"><label>표시 신호</label><div class="signalButtons"><button id="signalPrealert" class="signalButton active" data-signal="prealert" type="button">PREALERT</button><button id="signalBreakout" class="signalButton" data-signal="breakout" type="button">BREAKOUT</button></div></div>
@@ -57,7 +59,7 @@
     <div id="watchlistControls" class="buttons" hidden style="margin-top:10px"><input id="symbolsInput" style="min-width:390px" value="000660,005930,005380,012450,035420" placeholder="종목코드 쉼표 구분"></div>
     <div class="buttons" style="margin-top:12px">
       <button id="marketScanBtn" class="button success fullMarketField" type="button">전체시장 새 검색</button>
-      <span id="providerNote" class="muted tiny">상장주식 전체 페이지(ETF/ETN 제외) → 시총 → 확정 영업이익 → 신호 순으로 계산합니다.</span>
+      <span id="providerNote" class="muted tiny">일반주식 전체 → 시총 → 확정 영업이익 → 신호 순으로 계산합니다. ETF 체크 시 ETF를 추가하고 ETN은 제외합니다.</span>
       <span id="lastUpdated" class="muted tiny right">마지막 조회: -</span>
     </div>
     <div id="scanProgress" class="muted tiny scanProgress" aria-live="polite">저장된 결과를 조회하거나 전체시장 새 검색을 눌러주세요.</div>
@@ -66,8 +68,8 @@
   <div class="notice"><b>신호:</b> PREALERT는 현재가가 직전 20일 High 아래 설정 범위에 접근한 종목입니다. BREAKOUT은 어제까지 돌파하지 않았고 오늘 처음 직전 20일 High를 넘은 종목만 표시합니다. Naver 수급액은 순매수수량×가격의 추정값이며 KIS 공식 당일 투자자 데이터는 장 종료 후 제공됩니다.</div>
   <div class="tableWrap">
     <table>
-      <thead><tr><th><button class="sortButton" data-sort="stage">상태</button></th><th><button class="sortButton" data-sort="name">종목</button></th><th><button class="sortButton" data-sort="market">시장</button></th><th><button class="sortButton" data-sort="market_cap_100m">시총(억)</button></th><th><button class="sortButton" data-sort="operating_profit_100m">영업이익(억)</button></th><th><button class="sortButton" data-sort="avg_value10">10D거래대금(억)</button></th><th><button class="sortButton" data-sort="today_change_pct">당일%</button></th><th><button class="sortButton" data-sort="investor_net">외인/기관(억)</button></th><th><button class="sortButton" data-sort="current">현재가</button></th><th><button class="sortButton" data-sort="breakout20">20D 돌파가</button></th><th><button class="sortButton" data-sort="distance_pct">거리</button></th><th><button class="sortButton" data-sort="score">Quality</button></th><th><button class="sortButton" data-sort="source">Source</button></th></tr></thead>
-      <tbody id="candidateBody"><tr><td colspan="13" class="muted" style="text-align:center">전체시장 새 검색 또는 새로고침을 눌러주세요.</td></tr></tbody>
+      <thead><tr><th><button class="sortButton" data-sort="stage">상태</button></th><th><button class="sortButton" data-sort="name">종목</button></th><th><button class="sortButton" data-sort="market">시장</button></th><th><button class="sortButton" data-sort="asset_type">유형</button></th><th><button class="sortButton" data-sort="market_cap_100m">시총(억)</button></th><th><button class="sortButton" data-sort="operating_profit_100m">영업이익(억)</button></th><th><button class="sortButton" data-sort="avg_value10">10D거래대금(억)</button></th><th><button class="sortButton" data-sort="today_change_pct">당일%</button></th><th><button class="sortButton" data-sort="investor_net">외인/기관(억)</button></th><th><button class="sortButton" data-sort="current">현재가</button></th><th><button class="sortButton" data-sort="breakout20">20D 돌파가</button></th><th><button class="sortButton" data-sort="distance_pct">거리</button></th><th><button class="sortButton" data-sort="score">Quality</button></th><th><button class="sortButton" data-sort="source">Source</button></th></tr></thead>
+      <tbody id="candidateBody"><tr><td colspan="14" class="muted" style="text-align:center">전체시장 새 검색 또는 새로고침을 눌러주세요.</td></tr></tbody>
     </table>
   </div>
 
@@ -162,6 +164,7 @@ function scanConfig(){
   return {
     provider:el('provider').value,market:el('marketScope').value,
     min_market_cap_100m:num('minMarketCap'),min_operating_profit_100m:num('minOperatingProfit'),
+    include_etf:el('includeEtf').checked,
     signal_mode:signalMode,prealert_pct:num('prealertPct'),
     avg_value10_filter_enabled:activeFilters.avgValue10,min_avg_value10_100m:num('minAvgValue10'),
     investor_filter_enabled:activeFilters.investor,investor_mode:el('investorMode').value,min_investor_net_buy_100m:num('minInvestorBuy'),
@@ -220,11 +223,11 @@ function flowText(item){
 function appendCandidateRow(body,item){
   const row=document.createElement('tr');
   const values=item.stage==='ERROR'
-    ?[{text:'ERROR',cls:'error'},{text:item.name||item.symbol},{text:item.error||'조회 실패',span:11,cls:'error'}]
+    ?[{text:'ERROR',cls:'error'},{text:item.name||item.symbol},{text:item.error||'조회 실패',span:12,cls:'error'}]
     :[
-      {text:item.stage,cls:'stage '+stageClass(item.stage)},{text:(item.name||item.symbol)+' · '+item.symbol,stockLink:true},{text:item.market||'-'},
+      {text:item.stage,cls:'stage '+stageClass(item.stage)},{text:(item.name||item.symbol)+' · '+item.symbol,stockLink:true},{text:item.market||'-'},{text:item.asset_type||'STOCK'},
       {text:Number.isFinite(Number(item.market_cap_100m))?Math.round(Number(item.market_cap_100m)).toLocaleString('ko-KR'):'-'},
-      {text:Number.isFinite(Number(item.operating_profit_100m))?Math.round(Number(item.operating_profit_100m)).toLocaleString('ko-KR'):'-'},
+      {text:item.asset_type==='ETF'?'면제':Number.isFinite(Number(item.operating_profit_100m))?Math.round(Number(item.operating_profit_100m)).toLocaleString('ko-KR'):'-'},
       {text:Number.isFinite(Number(item.avg_value10))?(Number(item.avg_value10)/100000000).toFixed(1):'-'},{text:pct(item.today_change_pct),cls:changeClass(item.today_change_pct)},
       {text:flowText(item)},{text:fmt(item.current)},{text:fmt(item.breakout20)},{text:pct(item.distance_pct)},{text:String(item.score??'-')},{text:(item.source||'').toUpperCase()}
     ];
@@ -234,7 +237,7 @@ function appendCandidateRow(body,item){
 function sortValue(item,key){
   if(key==='investor_net')return Number(item.foreign_net_buy_100m||0)+Number(item.institution_net_buy_100m||0);
   if(key==='stage')return {BREAKOUT:3,PREALERT:2,WATCH:1,FILTERED:0,ERROR:-1}[item.stage]??-2;
-  if(['name','market','source'].includes(key))return String(item[key]||item.symbol||'').toLocaleLowerCase('ko-KR');
+  if(['name','market','asset_type','source'].includes(key))return String(item[key]||item.symbol||'').toLocaleLowerCase('ko-KR');
   const value=Number(item[key]);return Number.isFinite(value)?value:null;
 }
 function sortedCandidates(){
@@ -256,10 +259,16 @@ function updateSortHeaders(){
 }
 function renderCandidates(){
   const body=el('candidateBody');body.replaceChildren();const rows=sortedCandidates();rows.forEach(item=>appendCandidateRow(body,item));
-  if(!rows.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=13;cell.textContent=candidateNote||'조건에 맞는 후보가 없습니다.';cell.className='muted';cell.style.textAlign='center';row.appendChild(cell);body.appendChild(row)}
+  if(!rows.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=14;cell.textContent=candidateNote||'조건에 맞는 후보가 없습니다.';cell.className='muted';cell.style.textAlign='center';row.appendChild(cell);body.appendChild(row)}
   updateSortHeaders();
 }
 function sortCandidates(key){sortState=sortState.key===key?{key,direction:sortState.direction==='desc'?'asc':'desc'}:{key,direction:'desc'};renderCandidates()}
+
+function fullScanCountText(data){
+  const options=data.options||{},listed=Number(data.listed_count||0),marketCounts=listed?` (KOSPI ${Number(data.kospi_count||0).toLocaleString('ko-KR')} · KOSDAQ ${Number(data.kosdaq_count||0).toLocaleString('ko-KR')})`:'';
+  if(options.include_etf)return `일반주식 ${Number(data.stock_count||0).toLocaleString('ko-KR')}개 + ETF ${Number(data.etf_count||0).toLocaleString('ko-KR')}개${marketCounts}, ETN 제외 → 주식 시총 통과 + ETF ${Number(data.universe_count||0).toLocaleString('ko-KR')}개 → 주식 영업이익 통과 ${Number(data.stock_fundamentals_passed||0).toLocaleString('ko-KR')}개 + ETF ${Number(data.etf_scanned||0).toLocaleString('ko-KR')}개`;
+  return `상장주식 전체 ${listed?listed.toLocaleString('ko-KR'):'확인 전'}개${marketCounts}, ETF/ETN 제외 → 시총 통과 ${Number(data.universe_count||0).toLocaleString('ko-KR')}개 → 영업이익 통과 ${Number(data.fundamentals_passed||0).toLocaleString('ko-KR')}개`;
+}
 
 async function loadCandidates(){
   const provider=el('provider').value,scope=el('scanScope').value,params=new URLSearchParams({provider,scope,prealert_pct:String(num('prealertPct'))});
@@ -279,8 +288,7 @@ async function loadCandidates(){
   el('providerNote').textContent='Provider: '+data.provider+' · '+data.note;
   if(data.full_market_scan){
     const options=data.options||{},market=options.market==='KOSPI'?'KOSPI만':options.market==='KOSDAQ'?'KOSDAQ만':'KOSPI+KOSDAQ';
-    const listed=Number(data.listed_count||0),marketCounts=listed?` (KOSPI ${Number(data.kospi_count||0).toLocaleString('ko-KR')} · KOSDAQ ${Number(data.kosdaq_count||0).toLocaleString('ko-KR')})`:'';
-    el('scanProgress').textContent=data.scan_status==='COMPLETED'?`검색 #${data.scan_id} · 범위 ${market} 상장주식 전체 ${listed?listed.toLocaleString('ko-KR'):'확인 전'}개${marketCounts}, ETF/ETN 제외 → 시총 통과 ${Number(data.universe_count||0).toLocaleString('ko-KR')}개 → 영업이익 통과 ${Number(data.fundamentals_passed||0).toLocaleString('ko-KR')}개 → 후보 ${(data.items||[]).length.toLocaleString('ko-KR')}개 · 오류 ${Number(data.error_count||0).toLocaleString('ko-KR')}개`:data.note;
+    el('scanProgress').textContent=data.scan_status==='COMPLETED'?`검색 #${data.scan_id} · 범위 ${market} ${fullScanCountText(data)} → 후보 ${(data.items||[]).length.toLocaleString('ko-KR')}개 · 오류 ${Number(data.error_count||0).toLocaleString('ko-KR')}개`:data.note;
   }
   const received=data.items||[];
   if(scope==='watchlist'){
@@ -295,12 +303,11 @@ async function loadCandidates(){
 
 function applyFullScanResult(data,{savedAt=null}={}){
   const options=data.options||{},market=options.market==='KOSPI'?'KOSPI만':options.market==='KOSDAQ'?'KOSDAQ만':'KOSPI+KOSDAQ';
-  const listed=Number(data.listed_count||0),marketCounts=listed?` (KOSPI ${Number(data.kospi_count||0).toLocaleString('ko-KR')} · KOSDAQ ${Number(data.kosdaq_count||0).toLocaleString('ko-KR')})`:'';
   candidateItems=data.items||[];candidateNote=data.note||'조건에 맞는 후보가 없습니다.';renderCandidates();
   const duration=Number.isFinite(Number(data.duration_seconds))?` · ${Number(data.duration_seconds).toFixed(1)}초`:'';
   const saved=savedAt?` · 저장 ${new Date(savedAt).toLocaleString('ko-KR')}`:'';
   el('providerNote').textContent='Provider: '+String(data.provider||'auto').toUpperCase()+' · '+candidateNote;
-  el('scanProgress').textContent=`수동 전체검색 · 범위 ${market} 상장주식 전체 ${listed?listed.toLocaleString('ko-KR'):'확인 전'}개${marketCounts}, ETF/ETN 제외 → 시총 통과 ${Number(data.universe_count||0).toLocaleString('ko-KR')}개 → 영업이익 통과 ${Number(data.fundamentals_passed||0).toLocaleString('ko-KR')}개 → 후보 ${candidateItems.length.toLocaleString('ko-KR')}개 · 오류 ${Number(data.error_count||0).toLocaleString('ko-KR')}개${duration}${saved}`;
+  el('scanProgress').textContent=`수동 전체검색 · 범위 ${market} ${fullScanCountText(data)} → 후보 ${candidateItems.length.toLocaleString('ko-KR')}개 · 오류 ${Number(data.error_count||0).toLocaleString('ko-KR')}개${duration}${saved}`;
   const current=candidateItems.find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||candidateItems.find(item=>item.stage!=='ERROR');if(current)showCandidate(current,{populateTracking:!stored()});
 }
 
@@ -400,7 +407,7 @@ async function chooseSignal(mode){setSignalMode(mode);if(el('scanScope').value==
 
 const initialScan=storedScanConfig();
 if(initialScan){
-  el('scanScope').value=initialScan.scope||'all';el('marketScope').value=initialScan.market||'ALL';el('minMarketCap').value=initialScan.min_market_cap_100m??500;el('minOperatingProfit').value=initialScan.min_operating_profit_100m??50;el('prealertPct').value=initialScan.prealert_pct??1;
+  el('scanScope').value=initialScan.scope||'all';el('marketScope').value=initialScan.market||'ALL';el('includeEtf').checked=Boolean(initialScan.include_etf);el('minMarketCap').value=initialScan.min_market_cap_100m??500;el('minOperatingProfit').value=initialScan.min_operating_profit_100m??50;el('prealertPct').value=initialScan.prealert_pct??1;
   el('minAvgValue10').value=initialScan.min_avg_value10_100m??500;el('investorMode').value=initialScan.investor_mode||'either';el('minInvestorBuy').value=initialScan.min_investor_net_buy_100m??0;el('minTodayChange').value=initialScan.min_today_change_pct??5;
   activeFilters.avgValue10=initialScan.avg_value10_filter_enabled??true;activeFilters.investor=initialScan.investor_filter_enabled??false;activeFilters.todayChange=initialScan.today_change_filter_enabled??false;if(initialScan.provider&&initialScan.provider!=='demo')el('provider').value=initialScan.provider;
 }
@@ -412,7 +419,7 @@ el('addAvgValue10').addEventListener('click',()=>setFilter('avgValue10',true));e
 el('signalPrealert').addEventListener('click',()=>chooseSignal('prealert').catch(error=>el('scanProgress').textContent=error.message));el('signalBreakout').addEventListener('click',()=>chooseSignal('breakout').catch(error=>el('scanProgress').textContent=error.message));
 el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('liveBtn').addEventListener('click',toggleRealtime);el('marketScanBtn').addEventListener('click',startFullMarketScan);
 el('scanScope').addEventListener('change',()=>{updateScanVisibility();loadCandidates().catch(error=>el('scanProgress').textContent=error.message)});
-['marketScope','minMarketCap','minOperatingProfit','prealertPct','minAvgValue10','investorMode','minInvestorBuy','minTodayChange','provider'].forEach(id=>el(id).addEventListener('change',saveScanConfig));
+['marketScope','includeEtf','minMarketCap','minOperatingProfit','prealertPct','minAvgValue10','investorMode','minInvestorBuy','minTodayChange','provider'].forEach(id=>el(id).addEventListener('change',saveScanConfig));
 el('prealertPct').addEventListener('input',renderPrealertPct);el('gSymbol').addEventListener('input',()=>{if(el('gSymbol').value.trim()!==selected?.symbol)trackingName='';renderTrackingName()});
 el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',saveTracking);el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',clearTracking);el('sizingMode').addEventListener('change',updateSizingVisibility);el('exitStrategy').addEventListener('change',()=>calculateGuide(false).catch(()=>{}));
 restoreTracking();

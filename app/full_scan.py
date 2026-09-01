@@ -34,6 +34,7 @@ class FullScanConfig:
     market: str = "ALL"
     min_market_cap_100m: float = 500.0
     min_operating_profit_100m: float = 50.0
+    include_etf: bool = False
     signal_mode: str = "prealert"
     prealert_pct: float = 1.0
     avg_value10_filter_enabled: bool = True
@@ -67,6 +68,7 @@ class FullScanConfig:
             market=market,
             min_market_cap_100m=float(self.min_market_cap_100m),
             min_operating_profit_100m=float(self.min_operating_profit_100m),
+            include_etf=bool(self.include_etf),
             signal_mode=self.signal_mode,
             prealert_pct=float(self.prealert_pct),
             avg_value10_filter_enabled=bool(self.avg_value10_filter_enabled),
@@ -84,6 +86,7 @@ class FullScanConfig:
             "market": self.market,
             "min_market_cap_100m": self.min_market_cap_100m,
             "min_operating_profit_100m": self.min_operating_profit_100m,
+            "include_etf": self.include_etf,
             "signal_mode": self.signal_mode,
             "prealert_pct": self.prealert_pct,
             "avg_value10_filter_enabled": self.avg_value10_filter_enabled,
@@ -148,9 +151,24 @@ def scan_full_market(
         config.market,
         config.min_market_cap_100m,
         lambda done, total, message: report("universe", done, total, message),
+        include_etf=config.include_etf,
     )
     universe_count = len(members)
     listed_count = int(getattr(universe, "last_listed_count", universe_count))
+    stock_count = int(
+        getattr(
+            universe,
+            "last_stock_count",
+            sum(1 for member in members if member.asset_type != "ETF"),
+        )
+    )
+    etf_count = int(
+        getattr(
+            universe,
+            "last_etf_count",
+            sum(1 for member in members if member.asset_type == "ETF"),
+        )
+    )
     market_counts = getattr(universe, "last_market_counts", {})
     kospi_count = int(market_counts.get("KOSPI", 0))
     kosdaq_count = int(market_counts.get("KOSDAQ", 0))
@@ -158,15 +176,22 @@ def scan_full_market(
         "fundamentals",
         0,
         universe_count,
-        f"상장주식 {listed_count:,}개 전체 확인 · 시총 통과 {universe_count:,}개 · 영업이익 확인중",
+        (
+            f"일반주식 {stock_count:,}개 + ETF {etf_count:,}개 확인 · "
+            f"주식 시총 통과 + ETF {universe_count:,}개 · 영업이익 확인중"
+            if config.include_etf
+            else f"상장주식 {listed_count:,}개 전체 확인 · 시총 통과 {universe_count:,}개 · 영업이익 확인중"
+        ),
     )
 
     errors = 0
-    ready: list[UniverseMember] = []
+    ready: list[UniverseMember] = [member for member in members if member.asset_type == "ETF"]
     uncached: list[UniverseMember] = []
     cache_days = max(0, int(os.getenv("FUNDAMENTALS_CACHE_DAYS", "7")))
     cached_rows = get_cached_fundamentals([member.symbol for member in members], cache_days)
     for member in members:
+        if member.asset_type == "ETF":
+            continue
         if member.operating_profit_100m is not None:
             ready.append(member)
             continue
@@ -202,12 +227,24 @@ def scan_full_market(
     eligible = [
         member
         for member in ready
-        if member.operating_profit_100m is not None
-        and member.operating_profit_100m >= config.min_operating_profit_100m
+        if member.asset_type == "ETF"
+        or (
+            member.operating_profit_100m is not None
+            and member.operating_profit_100m >= config.min_operating_profit_100m
+        )
     ]
+    stock_fundamentals_passed = sum(
+        1 for member in eligible if member.asset_type != "ETF"
+    )
+    etf_scanned = sum(1 for member in eligible if member.asset_type == "ETF")
     total = len(eligible)
     signal_label = "PREALERT/BREAKOUT" if config.signal_mode == "actionable" else config.signal_mode.upper()
-    report("signals", 0, total, f"재무 필터 통과 {total:,}개 · {signal_label} 계산중")
+    signal_progress = (
+        f"주식 영업이익 통과 {stock_fundamentals_passed:,}개 + ETF {etf_scanned:,}개"
+        if config.include_etf
+        else f"재무 필터 통과 {total:,}개"
+    )
+    report("signals", 0, total, f"{signal_progress} · {signal_label} 계산중")
 
     min_avg_value20 = float(os.getenv("MIN_AVG_VALUE20", "10000000000"))
     min_score = int(os.getenv("MIN_SCORE", "55"))
@@ -240,7 +277,7 @@ def scan_full_market(
         ):
             return None
         flow = None
-        if config.investor_filter_enabled:
+        if config.investor_filter_enabled and member.asset_type != "ETF":
             flow = data.get_investor_flow(member.symbol)
             if config.provider != "demo" and flow.source == "demo":
                 raise RuntimeError("demo investor flow is excluded from a real full-market scan")
@@ -256,6 +293,7 @@ def scan_full_market(
             market_cap_100m=member.market_cap_100m,
             operating_profit_100m=member.operating_profit_100m,
             fiscal_period=member.fiscal_period,
+            asset_type=member.asset_type,
             current=snapshot.quote.price,
             today_change_pct=today_change_pct,
             source=snapshot.quote.source,
@@ -295,14 +333,27 @@ def scan_full_market(
         "processed": completed,
         "total": total,
         "listed_count": listed_count,
+        "stock_count": stock_count,
+        "etf_count": etf_count,
         "kospi_count": kospi_count,
         "kosdaq_count": kosdaq_count,
         "universe_count": universe_count,
         "fundamentals_passed": total,
+        "stock_fundamentals_passed": stock_fundamentals_passed,
+        "etf_scanned": etf_scanned,
         "error_count": errors,
         "message": (
-            f"상장주식 전체 {listed_count:,}개(ETF/ETN 제외) → 시총 통과 {universe_count:,}개 "
-            f"→ 재무 통과 {total:,}개 → 선택 옵션 통과 후보 {len(items):,}개"
+            (
+                f"일반주식 {stock_count:,}개 + ETF {etf_count:,}개(ETN 제외) "
+                f"→ 주식 시총 통과 + ETF {universe_count:,}개 "
+                f"→ 주식 영업이익 통과 {stock_fundamentals_passed:,}개 + ETF {etf_scanned:,}개 "
+                f"→ 선택 옵션 통과 후보 {len(items):,}개"
+            )
+            if config.include_etf
+            else (
+                f"상장주식 전체 {listed_count:,}개(ETF/ETN 제외) → 시총 통과 {universe_count:,}개 "
+                f"→ 재무 통과 {total:,}개 → 선택 옵션 통과 후보 {len(items):,}개"
+            )
         ),
     }
     return items, summary

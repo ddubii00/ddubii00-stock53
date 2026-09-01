@@ -22,6 +22,7 @@ class UniverseMember:
     operating_profit_100m: float | None = None
     fiscal_period: str | None = None
     source: str = "naver"
+    asset_type: str = "STOCK"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -35,6 +36,7 @@ class UniverseProvider(Protocol):
         market: str,
         min_market_cap_100m: float,
         progress: ProgressCallback | None = None,
+        include_etf: bool = False,
     ) -> list[UniverseMember]: ...
 
     def get_operating_profit(self, member: UniverseMember) -> UniverseMember: ...
@@ -60,6 +62,8 @@ class NaverUniverseProvider:
         self._local = threading.local()
         self.last_listed_count = 0
         self.last_market_counts: dict[str, int] = {"KOSPI": 0, "KOSDAQ": 0}
+        self.last_stock_count = 0
+        self.last_etf_count = 0
 
     def _session(self) -> requests.Session:
         session = getattr(self._local, "session", None)
@@ -108,11 +112,14 @@ class NaverUniverseProvider:
         market: str,
         min_market_cap_100m: float,
         progress: ProgressCallback | None = None,
+        include_etf: bool = False,
     ) -> list[UniverseMember]:
         members: list[UniverseMember] = []
         markets = self._markets(market)
         seen_symbols: set[str] = set()
         market_symbols: dict[str, set[str]] = {"KOSPI": set(), "KOSDAQ": set()}
+        stock_symbols: set[str] = set()
+        etf_symbols: set[str] = set()
         pages_done = 0
         for market_name in markets:
             page = 1
@@ -128,17 +135,19 @@ class NaverUniverseProvider:
                 if not stocks:
                     break
                 for row in stocks:
-                    if str(row.get("stockEndType") or "stock").lower() != "stock":
+                    end_type = str(row.get("stockEndType") or "stock").strip().lower()
+                    if end_type not in ({"stock", "etf"} if include_etf else {"stock"}):
                         continue
                     symbol = str(row.get("itemCode") or "").strip().upper()
                     if len(symbol) != 6 or not symbol.isalnum():
                         continue
                     market_symbols[market_name].add(symbol)
+                    (etf_symbols if end_type == "etf" else stock_symbols).add(symbol)
                     try:
                         market_cap = self._market_cap_100m(row)
                     except (TypeError, ValueError):
                         continue
-                    if market_cap < min_market_cap_100m:
+                    if end_type == "stock" and market_cap < min_market_cap_100m:
                         continue
                     if symbol in seen_symbols:
                         continue
@@ -149,13 +158,15 @@ class NaverUniverseProvider:
                             name=str(row.get("stockName") or symbol),
                             market=market_name,
                             market_cap_100m=market_cap,
+                            asset_type="ETF" if end_type == "etf" else "STOCK",
                         )
                     )
                 pages_done += 1
                 if progress:
                     total_count = int(payload.get("totalCount") or 0)
                     page_total = math.ceil(total_count / self.page_size) if total_count else page
-                    progress(pages_done, page_total * len(markets), f"{market_name} 시가총액 목록 {page}페이지")
+                    label = "주식·ETF" if include_etf else "주식"
+                    progress(pages_done, page_total * len(markets), f"{market_name} {label} 목록 {page}페이지")
                 if len(stocks) < self.page_size:
                     break
                 page += 1
@@ -163,6 +174,8 @@ class NaverUniverseProvider:
             market_name: len(market_symbols[market_name]) for market_name in ("KOSPI", "KOSDAQ")
         }
         self.last_listed_count = sum(self.last_market_counts.values())
+        self.last_stock_count = len(stock_symbols)
+        self.last_etf_count = len(etf_symbols)
         return members
 
     def get_operating_profit(self, member: UniverseMember) -> UniverseMember:
@@ -214,32 +227,58 @@ class DemoUniverseProvider:
         ("041510", "에스엠", "KOSDAQ", 25_000, 1_000),
         ("145020", "휴젤", "KOSDAQ", 35_000, 1_200),
     ]
+    _etfs = [
+        ("069500", "KODEX 200", "KOSPI", 65_000),
+        ("229200", "KODEX 코스닥150", "KOSPI", 25_000),
+    ]
 
     def __init__(self):
         self.last_listed_count = 0
         self.last_market_counts: dict[str, int] = {"KOSPI": 0, "KOSDAQ": 0}
+        self.last_stock_count = 0
+        self.last_etf_count = 0
 
     def list_members(
         self,
         market: str,
         min_market_cap_100m: float,
         progress: ProgressCallback | None = None,
+        include_etf: bool = False,
     ) -> list[UniverseMember]:
         selected = market.upper()
+        selected_etfs = [row for row in self._etfs if selected in {"ALL", row[2]}] if include_etf else []
         self.last_market_counts = {
-            market_name: sum(1 for row in self._members if row[2] == market_name)
-            if selected in {"ALL", market_name}
-            else 0
+            market_name: (
+                sum(1 for row in self._members if row[2] == market_name)
+                + sum(1 for row in selected_etfs if row[2] == market_name)
+            ) if selected in {"ALL", market_name} else 0
             for market_name in ("KOSPI", "KOSDAQ")
         }
         self.last_listed_count = sum(self.last_market_counts.values())
+        self.last_stock_count = sum(
+            1 for row in self._members if selected in {"ALL", row[2]}
+        )
+        self.last_etf_count = len(selected_etfs)
         rows = [
             UniverseMember(symbol, name, item_market, cap, profit, "DEMO", self.name)
             for symbol, name, item_market, cap, profit in self._members
             if (selected == "ALL" or selected == item_market) and cap >= min_market_cap_100m
         ]
+        rows.extend(
+            UniverseMember(
+                symbol=symbol,
+                name=name,
+                market=item_market,
+                market_cap_100m=cap,
+                operating_profit_100m=None,
+                fiscal_period=None,
+                source=self.name,
+                asset_type="ETF",
+            )
+            for symbol, name, item_market, cap in selected_etfs
+        )
         if progress:
-            progress(1, 1, "DEMO 전체시장 목록")
+            progress(1, 1, "DEMO 전체시장 주식·ETF 목록" if include_etf else "DEMO 전체시장 주식 목록")
         return rows
 
     def get_operating_profit(self, member: UniverseMember) -> UniverseMember:

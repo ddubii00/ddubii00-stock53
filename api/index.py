@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SYMBOL_RE = re.compile(r"^[0-9A-Z]{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
-app = FastAPI(title="Turtle Signal Guide", version="0.6.0")
+app = FastAPI(title="Turtle Signal Guide", version="0.7.0")
 
 DEFAULT_SYMBOLS = {
     "000660": "SK하이닉스",
@@ -80,6 +80,7 @@ class FullMarketScanIn(BaseModel):
     market: str = Field(default="ALL", pattern="^(ALL|KOSPI|KOSDAQ)$")
     min_market_cap_100m: float = Field(default=500, ge=0)
     min_operating_profit_100m: float = 50
+    include_etf: bool = False
     signal_mode: str = Field(default="prealert", pattern="^(prealert|breakout|actionable)$")
     prealert_pct: float = Field(default=1.0, ge=0, le=100)
     avg_value10_filter_enabled: bool = True
@@ -115,7 +116,7 @@ def health():
     app_mode = os.getenv("APP_MODE", "vercel")
     return {
         "ok": True,
-        "version": "0.6.0",
+        "version": "0.7.0",
         "app_mode": app_mode,
         "provider_mode": mode,
         "provider_chain": getattr(provider, "name", provider.__class__.__name__),
@@ -219,10 +220,14 @@ def candidates(
             "processed": scan["processed"],
             "total": scan["total"],
             "listed_count": scan.get("listed_count", 0),
+            "stock_count": scan.get("stock_count", 0),
+            "etf_count": scan.get("etf_count", 0),
             "kospi_count": scan.get("kospi_count", 0),
             "kosdaq_count": scan.get("kosdaq_count", 0),
             "universe_count": scan["universe_count"],
             "fundamentals_passed": scan["fundamentals_passed"],
+            "stock_fundamentals_passed": scan.get("stock_fundamentals_passed", 0),
+            "etf_scanned": scan.get("etf_scanned", 0),
             "error_count": scan["error_count"],
             "started_at": scan["started_at"],
             "finished_at": scan["finished_at"],

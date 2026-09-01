@@ -35,7 +35,7 @@ class RoutedUniverseSession:
         rows = {
             ("KOSPI", 1): [
                 {"itemCode": "005930", "stockName": "삼성전자", "stockEndType": "stock", "marketValueRaw": "60000000000"},
-                {"itemCode": "069500", "stockName": "KODEX 200", "stockEndType": "etf", "marketValueRaw": "70000000000"},
+                {"itemCode": "069500", "stockName": "KODEX 200", "stockEndType": "etf", "marketValueRaw": "10000000000"},
             ],
             ("KOSPI", 2): [
                 {"itemCode": "0126Z0", "stockName": "영문혼합주", "stockEndType": "stock", "marketValueRaw": "55000000000"},
@@ -114,15 +114,36 @@ def test_naver_universe_reads_every_market_page_and_filters_only_listed_stocks(m
     assert provider.last_market_counts == {"KOSPI": 2, "KOSDAQ": 2}
 
 
+def test_naver_universe_adds_etf_without_market_cap_filter_when_enabled(monkeypatch):
+    provider = NaverUniverseProvider(page_size=2)
+    session = RoutedUniverseSession()
+    monkeypatch.setattr(provider, "_session", lambda: session)
+
+    members = provider.list_members("ALL", 500, include_etf=True)
+
+    assert [member.symbol for member in members] == ["005930", "069500", "0126Z0", "0009K0"]
+    etf = next(member for member in members if member.symbol == "069500")
+    assert etf.asset_type == "ETF"
+    assert etf.market_cap_100m == 100
+    assert provider.last_stock_count == 4
+    assert provider.last_etf_count == 1
+    assert provider.last_listed_count == 5
+
+
 class FilterUniverse:
     name = "fake"
 
-    def list_members(self, market, min_market_cap_100m, progress=None):
-        return [
+    def list_members(self, market, min_market_cap_100m, progress=None, include_etf=False):
+        members = [
             UniverseMember("000660", "A", "KOSPI", 1_000, 100, "2025"),
             UniverseMember("005930", "B", "KOSPI", 900, 49, "2025"),
             UniverseMember("005380", "C", "KOSPI", 800, 50, "2025"),
         ]
+        if include_etf:
+            members.append(
+                UniverseMember("229200", "KODEX 코스닥150", "KOSPI", 100, asset_type="ETF")
+            )
+        return members
 
     def get_operating_profit(self, member):
         raise AssertionError("prefilled fundamentals should not be fetched")
@@ -207,3 +228,31 @@ def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):
         universe_provider=FilterUniverse(),
     )
     assert [item["symbol"] for item in value_filter_disabled] == ["000660"]
+
+
+def test_full_scan_etf_bypasses_fundamentals_market_cap_and_investor_filters(monkeypatch, tmp_path):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "etf-scan.db"))
+    provider = CountingDemo()
+    items, summary = scan_full_market(
+        FullScanConfig(
+            provider="demo",
+            market="KOSPI",
+            min_market_cap_100m=500,
+            min_operating_profit_100m=1_000_000,
+            include_etf=True,
+            signal_mode="actionable",
+            avg_value10_filter_enabled=False,
+            investor_filter_enabled=True,
+            min_investor_net_buy_100m=1_000_000,
+        ),
+        market_provider=provider,
+        universe_provider=FilterUniverse(),
+    )
+
+    assert "229200" in provider.symbols
+    assert summary["stock_fundamentals_passed"] == 0
+    assert summary["etf_scanned"] == 1
+    assert summary["etf_count"] == 1
+    assert [item["symbol"] for item in items] == ["229200"]
+    assert items[0]["asset_type"] == "ETF"
+    assert items[0]["operating_profit_100m"] is None
