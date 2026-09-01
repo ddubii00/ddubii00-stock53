@@ -152,6 +152,20 @@ def get_position(symbol: str) -> dict | None:
         return dict(row) if row else None
 
 
+def close_position(symbol: str) -> bool:
+    """Mark a position closed so it disappears from active monitoring."""
+
+    init_db()
+    with closing(connect()) as conn:
+        cursor = conn.execute(
+            "UPDATE positions SET status='CLOSED', updated_at=CURRENT_TIMESTAMP "
+            "WHERE symbol=? AND status='ACTIVE'",
+            (symbol,),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
 def _derived_stop(entry_price: float, n_at_entry: float, filled_units: int) -> float:
     latest = entry_price + max(0, filled_units - 1) * 0.5 * n_at_entry
     return latest - 2.0 * n_at_entry

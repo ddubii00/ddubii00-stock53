@@ -22,6 +22,7 @@
 - System 1 Exit: `MIN(Low[D-1] ... Low[D-10])`
 
 Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에서 제거합니다. 어제 이미 돌파한 종목은 오늘 신규 Unit #1 후보가 아닙니다.
+오늘 BREAKOUT은 `max(오늘 현재가, 오늘 장중 고가) >= 신규 돌파가`로 판정합니다. 전고점을 단 1호가라도 넘으면 돌파이며, 2%나 5% 이상 더 넘어야 하는 조건은 없습니다. 장중 돌파 후 현재가가 돌파가 아래로 되밀려도 오늘 BREAKOUT 상태는 유지합니다.
 
 ### 포지션
 
@@ -89,7 +90,9 @@ KOSPI/KOSDAQ 종목목록
 
 기본값은 시가총액 500억원 이상, 영업이익 50억원 이상, 10일 평균거래대금 500억원 이상이며 UI에서 숫자를 바꿀 수 있습니다. 각 선택 필터의 `×`를 누르면 그 조건을 제외할 수 있습니다. 외인/기관은 각각 또는 합산 순매수액을 설정할 수 있고, `0억원`은 순매수 여부만 확인합니다. Naver 수급액은 순매수수량×가격의 추정값이며 KIS 공식 투자자 데이터는 장 종료 후 확정되는 데이터입니다. ETF에는 시가총액·영업이익·외인/기관 필터를 적용하지 않고 PREALERT/BREAKOUT, 거래대금, BREAKOUT 당일 상승률만 적용합니다. ETN은 제외하고 신규·우선주에 쓰이는 영문 혼합 6자리 종목코드는 포함합니다. 화면에는 일반주식/ETF와 KOSPI/KOSDAQ 원천 수, 각 필터 통과 수를 함께 표시합니다. 재무값은 기본 7일 캐시하고 시세 신호는 새 검색 때 다시 계산합니다.
 
-PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. BREAKOUT은 `현재가 >= 직전 완료 20거래일 High`이면서 어제 이미 돌파하지 않은, 오늘 최초 돌파만 반환합니다. BREAKOUT의 `당일 5% 이상` 필터는 선택 사항이며 제거하면 상승률과 관계없이 정상 20D 돌파를 찾습니다.
+PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. BREAKOUT은 `max(현재가, 오늘 장중 고가) >= 직전 완료 20거래일 High`이면서 어제 이미 돌파하지 않은, 오늘 최초 돌파만 반환합니다. BREAKOUT의 `당일 5% 이상`은 **전고점 대비 돌파폭**이 아니라 **전일 종가 대비 당일 상승률** 선택 필터입니다. 옵션을 꺼두면 상승률과 관계없이 정상 20D 돌파를 찾습니다.
+
+거래대금·수급·당일 상승률 선택 필터를 통과하지 못한 종목은 검색 결과와 Oracle Telegram 알림에 포함하지 않습니다.
 
 전체검색은 로컬/Oracle에서는 진행률을 저장하는 장기 작업입니다. Vercel에서는 background thread를 실행하지 않고, 사용자가 버튼을 누른 단일 요청 안에서 수동 1회 검색합니다. 완료 결과는 해당 브라우저 `localStorage`에 보관합니다.
 
@@ -118,12 +121,12 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 ## UI 동작
 
 - `↻ 새로고침`: 현재 범위의 후보 snapshot과 저장된 추적종목 가이드를 각각 한 번 조회. 전체 상장주식 목록·재무·신호를 처음부터 다시 계산하지 않음
-- `실시간`: ON이면 초록색 `● 검색중`, 기본 30초 browser polling
-- poll 간격: `REALTIME_POLL_SECONDS`
+- `실시간`: Oracle에서 PREALERT/BREAKOUT 후보를 기본 30초 주기로 다시 검색하고, 표시 종목 현재가·등락률은 기본 3초 주기로 별도 갱신
+- 후보/시세 간격: `REALTIME_POLL_SECONDS=30`, `QUOTE_POLL_SECONDS=3`. 전체 검색이 30초보다 오래 걸리면 중복 실행하지 않음
 - 중복 fetch cycle 방지
 - 후보 행 클릭: 상세·Entry/ATR 기본값 표시. 종목명 클릭 시 `stock.naver.com` 해당 종목을 새 탭으로 엶. 저장된 추적 종목은 자동 후보 선택으로 덮어쓰지 않음
 - 검색 범위: `KOSPI/KOSDAQ 전체` 또는 `직접 입력 종목`
-- PREALERT/BREAKOUT 버튼: 신호를 전환하고 전체시장에서는 새 검색 실행
+- PREALERT와 BREAKOUT은 한 번에 동시 검색하고 두 표로 분리. 종목명만 표시하고 등락률은 상승 빨간·하락 파랑으로 표시
 - 전체시장 필터: 시장, ETF 추가 여부, 최소 시가총액, 최소 영업이익, 10D 평균거래대금, 외인/기관 수급, BREAKOUT 당일 상승률
 - 표 머리글: 첫 클릭 내림차순, 두 번째 클릭 오름차순
 - `전체시장 새 검색`: 로컬/Oracle에서 KOSPI/KOSDAQ 상장주식 목록부터 시총·영업이익·선택 필터·신호를 전부 다시 계산하고 진행률 표시
@@ -131,6 +134,7 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - 전체검색 중복 실행 방지, 일반 실시간 polling은 마지막 snapshot만 재조회
 - Vercel 상태: `localStorage`
 - `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가
+- 추적 종목: 여러 종목 추가·변경·보기, 총 투자한도와 1 Unit(총액÷4) 표시, 매도 완료 후 삭제
 - 매도 전략: 정통 10D Low 전량청산 또는 MA5 50%/MA10 잔여 분할 가이드
 
 worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지 않습니다.
@@ -142,6 +146,7 @@ worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지
 | GET | `/` | UI |
 | GET | `/api/health` | provider chain, poll 설정 |
 | GET | `/api/candidates` | watchlist 또는 저장된 전체시장 후보 snapshot |
+| GET | `/api/quotes` | 표시 종목 현재가·당일 등락률 일괄 갱신(최대 30종목) |
 | POST | `/api/full-market-scan-once` | Vercel용 수동 1회 전체시장 검색 |
 | POST | `/api/full-market-scans` | 로컬/Oracle 전체시장 검색 시작 |
 | GET | `/api/full-market-scans/{id}` | 검색 진행률·결과 |
@@ -149,6 +154,7 @@ worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지
 | GET/POST | `/api/guide` | 선택종목 행동 가이드 |
 | GET/POST | `/api/positions` | Oracle position state |
 | POST | `/api/positions/{symbol}/confirm-fill` | 사용자의 체결 수동 확정 |
+| DELETE | `/api/positions/{symbol}` | 매도 완료 position을 CLOSED로 전환 |
 
 행동 상태는 `WAIT_ENTRY`, `ENTRY_NOW`, `HOLD`, `ADD_NOW`, `STOP_NOW`, `EXIT_NOW`입니다.
 
@@ -228,6 +234,7 @@ DB_PATH=./data/turtle.db
 - SQLite signal dedup / 수동 fill 확정
 - provider snapshot 일관성
 - Naver NXT 거래 세션 현재가 선택
+- 오늘 장중 고가 돌파 유지
 - 전체시장 시가총액 filter와 최신 확정 영업이익 선택
 - 재무 filter 선적용 후 시세 history 조회
 - 전체시장 background scan API와 snapshot 조회

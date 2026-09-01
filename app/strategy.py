@@ -90,6 +90,7 @@ def analyze(
     min_avg_value20: float = 10_000_000_000,
     prealert_pct: float = 1.0,
     min_score: int = 55,
+    today_high: float | None = None,
 ) -> TurtleResult:
     """Analyze a fresh Turtle System-1 entry without look-ahead bias.
 
@@ -112,7 +113,8 @@ def analyze(
     yesterday_broke = bars[-1].high > yesterday_breakout_level
 
     n = atr(bars, 20)
-    distance_pct = (breakout20 - current) / breakout20 * 100.0
+    breakout_observed_price = max(current, today_high or current)
+    distance_pct = (breakout20 - breakout_observed_price) / breakout20 * 100.0
     atr_pct = n / current * 100.0
     closes = [b.close for b in bars]
     ma20 = _avg(closes[-20:])
@@ -163,7 +165,7 @@ def analyze(
     if yesterday_broke:
         stage = "FILTERED"
         reasons.append("어제 이미 20일 고가 돌파: 신규 Unit #1 제외")
-    elif current >= breakout20:
+    elif breakout_observed_price >= breakout20:
         stage = "BREAKOUT"
     elif 0.0 < distance_pct <= prealert_pct + 1e-9:
         stage = "PREALERT"

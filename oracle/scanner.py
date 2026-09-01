@@ -34,10 +34,11 @@ def _message(item: dict) -> str:
     return (
         f"[TURTLE {item['stage']}]\n"
         f"{item.get('name') or item['symbol']} ({item['symbol']})\n"
-        f"현재가 {_fmt(item.get('current'))} / 조건가 {_fmt(item.get('breakout20'))}\n"
+        f"현재가 {_fmt(item.get('current'))} / 오늘 고가 {_fmt(item.get('today_high'))} "
+        f"/ 조건가 {_fmt(item.get('breakout20'))}\n"
         f"다음 ADD {_fmt(item.get('add2'))} / STOP {_fmt(item.get('initial_stop'))} / EXIT {_fmt(item.get('exit10'))}\n"
-        f"시총 {item.get('market_cap_100m', 0):,.0f}억원 / "
-        f"영업이익 {item.get('operating_profit_100m', 0):,.0f}억원\n"
+        f"시총 {float(item.get('market_cap_100m') or 0):,.0f}억원 / "
+        f"영업이익 {float(item.get('operating_profit_100m') or 0):,.0f}억원\n"
         f"제안 {quantity:,}주 · 약 {_fmt(amount)} / Risk budget {_fmt(risk_budget)}\n"
         "읽기 전용 신호이며 실제 주문은 전송하지 않습니다."
     )
@@ -66,6 +67,8 @@ def scan_once() -> dict:
 
     notifier = build_notifier()
     for item in scan["items"]:
+        if item.get("stage") not in {"PREALERT", "BREAKOUT"}:
+            continue
         event_key = f"candidate:{item['symbol']}:{float(item['breakout20']):.4f}:{item['stage']}"
         if event_once(event_key, item["symbol"], item["stage"]):
             notifier.send(_message(item))

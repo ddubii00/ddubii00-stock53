@@ -27,6 +27,7 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     assert health.status_code == 200
     assert health.json()["kis_configured"] is False
     assert health.json()["realtime_poll_seconds"] == 30
+    assert health.json()["quote_poll_seconds"] == 3
     assert health.json()["manual_full_market_scan_supported"] is True
     candidates = client.get("/api/candidates", params={"provider": "demo", "symbols": "000660"})
     assert candidates.status_code == 200
@@ -34,6 +35,30 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     alphanumeric_quote = client.get("/api/quote/0126z0", params={"provider": "demo"})
     assert alphanumeric_quote.status_code == 200
     assert alphanumeric_quote.json()["symbol"] == "0126Z0"
+    batch_quotes = client.get("/api/quotes", params={"provider": "demo", "symbols": "000660,005930"})
+    assert batch_quotes.status_code == 200
+    assert len(batch_quotes.json()["items"]) == 2
+    assert all(item["change_pct"] is not None for item in batch_quotes.json()["items"])
+
+
+def test_oracle_position_can_be_closed_after_sell(monkeypatch, tmp_path):
+    monkeypatch.setenv("APP_MODE", "oracle")
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "close-position.db"))
+    saved = client.post(
+        "/api/positions",
+        json={
+            "symbol": "090460",
+            "name": "비에이치",
+            "entry_price": 20_000,
+            "n_at_entry": 1_000,
+            "filled_units": 1,
+            "provider": "demo",
+        },
+    )
+    assert saved.status_code == 200
+    closed = client.delete("/api/positions/090460")
+    assert closed.status_code == 200
+    assert client.get("/api/positions").json()["items"] == []
 
 
 def test_guide_route_returns_position_action():

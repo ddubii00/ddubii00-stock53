@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SYMBOL_RE = re.compile(r"^[0-9A-Z]{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
-app = FastAPI(title="Turtle Signal Guide", version="0.7.0")
+app = FastAPI(title="Turtle Signal Guide", version="0.7.1")
 
 DEFAULT_SYMBOLS = {
     "000660": "SK하이닉스",
@@ -51,6 +51,7 @@ class ScanIn(BaseModel):
     name: str = ""
     current: float = Field(gt=0)
     current_volume: float = Field(default=0, ge=0)
+    today_high: float | None = Field(default=None, gt=0)
     market_return20: float = 0
     market_return60: float = 0
     bars: list[BarIn] = Field(min_length=61)
@@ -58,6 +59,7 @@ class ScanIn(BaseModel):
 
 class GuideIn(BaseModel):
     symbol: str
+    name: str = ""
     entry_price: float = Field(gt=0)
     n_at_entry: float | None = Field(default=None, gt=0)
     filled_units: int = Field(default=0, ge=0, le=4)
@@ -116,12 +118,13 @@ def health():
     app_mode = os.getenv("APP_MODE", "vercel")
     return {
         "ok": True,
-        "version": "0.7.0",
+        "version": "0.7.1",
         "app_mode": app_mode,
         "provider_mode": mode,
         "provider_chain": getattr(provider, "name", provider.__class__.__name__),
         "kis_configured": bool(os.getenv("KIS_APP_KEY") and os.getenv("KIS_APP_SECRET")),
         "realtime_poll_seconds": max(3, int(os.getenv("REALTIME_POLL_SECONDS", "30"))),
+        "quote_poll_seconds": max(2, int(os.getenv("QUOTE_POLL_SECONDS", "3"))),
         "full_market_scan_supported": app_mode != "vercel",
         "manual_full_market_scan_supported": True,
         "realtime_note": (
@@ -178,6 +181,30 @@ def quote(symbol: str, provider: str = "auto"):
         return snapshot.quote.__dict__
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/api/quotes")
+def quotes(symbols: str, provider: str = "auto"):
+    """Refresh displayed candidate quotes without recalculating full history."""
+
+    selected = list(dict.fromkeys(item.strip() for item in symbols.split(",") if item.strip()))
+    if not selected:
+        return {"provider": provider, "items": []}
+    if len(selected) > 30:
+        raise HTTPException(status_code=422, detail="quotes supports at most 30 symbols")
+    market_provider = _provider(provider)
+    items: list[dict] = []
+    for raw_symbol in selected:
+        try:
+            symbol = _valid_symbol(raw_symbol)
+            quote_row = market_provider.get_current_price(symbol)
+            items.append(quote_row.__dict__)
+        except Exception as exc:
+            items.append({"symbol": raw_symbol, "error": str(exc)})
+    return {
+        "provider": getattr(market_provider, "name", market_provider.__class__.__name__),
+        "items": items,
+    }
 
 
 @app.get("/api/candidates")
@@ -254,12 +281,14 @@ def candidates(
                 min_avg_value20=float(os.getenv("MIN_AVG_VALUE20", "10000000000")),
                 prealert_pct=max(0.0, prealert_pct),
                 min_score=int(os.getenv("MIN_SCORE", "55")),
+                today_high=snapshot.quote.day_high,
             )
             item = result.to_dict()
             item.update(
                 symbol=symbol,
                 name=DEFAULT_SYMBOLS.get(symbol, symbol),
                 current=snapshot.quote.price,
+                today_high=snapshot.quote.day_high,
                 source=snapshot.quote.source,
             )
             if include_filtered or item["stage"] != "FILTERED":
@@ -315,6 +344,7 @@ def scan(payload: ScanIn):
         min_avg_value20=float(os.getenv("MIN_AVG_VALUE20", "10000000000")),
         prealert_pct=float(os.getenv("PREALERT_PCT", "1.0")),
         min_score=int(os.getenv("MIN_SCORE", "55")),
+        today_high=payload.today_high,
     )
     response = result.to_dict()
     response.update(symbol=payload.symbol, name=payload.name, current=payload.current)
@@ -340,7 +370,10 @@ def _build_guide(payload: GuideIn) -> dict:
         exit_strategy=payload.exit_strategy,
     )
     response = guide.to_dict()
-    response.update(name=DEFAULT_SYMBOLS.get(symbol, symbol), source=snapshot.quote.source)
+    response.update(
+        name=payload.name or DEFAULT_SYMBOLS.get(symbol, symbol),
+        source=snapshot.quote.source,
+    )
     return response
 
 
@@ -404,3 +437,13 @@ def position_confirm_fill(symbol: str):
         raise HTTPException(status_code=404, detail="ACTIVE position not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.delete("/api/positions/{symbol}")
+def position_close(symbol: str):
+    if os.getenv("APP_MODE", "vercel") == "vercel":
+        raise HTTPException(status_code=409, detail="Vercel에서는 localStorage 상태를 직접 삭제합니다")
+    normalized = _valid_symbol(symbol)
+    if not build_position_state_store().close(normalized):
+        raise HTTPException(status_code=404, detail="ACTIVE position not found")
+    return {"ok": True, "symbol": normalized, "status": "CLOSED"}

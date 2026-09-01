@@ -35,6 +35,19 @@ def test_breakout():
     assert r.stage == "BREAKOUT"
 
 
+def test_intraday_high_breakout_remains_breakout_after_current_price_retraces():
+    r = analyze(
+        fresh_bars(),
+        current=149.0,
+        current_volume=1300,
+        min_score=0,
+        today_high=150.5,
+    )
+    assert r.breakout20 == 150
+    assert r.stage == "BREAKOUT"
+    assert r.distance_pct < 0
+
+
 def test_quality_does_not_block_turtle_breakout():
     b = fresh_bars()
     b = [Bar(x.high, x.low, x.close, x.volume, 0) for x in b]

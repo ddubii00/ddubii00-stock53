@@ -35,7 +35,9 @@ def _sizing() -> dict:
     }
 
 
-def _candidate_message(symbol: str, price: float, result: TurtleResult) -> str:
+def _candidate_message(
+    symbol: str, price: float, day_high: float | None, result: TurtleResult
+) -> str:
     sizing = _sizing()
     quantity, amount, risk_budget = calculate_unit_qty(
         price=result.breakout20,
@@ -45,7 +47,7 @@ def _candidate_message(symbol: str, price: float, result: TurtleResult) -> str:
     return (
         f"[TURTLE {result.stage}]\n"
         f"{symbol}\n"
-        f"현재가 {fmt(price)} / 조건가 {fmt(result.breakout20)}\n"
+        f"현재가 {fmt(price)} / 오늘 고가 {fmt(day_high)} / 조건가 {fmt(result.breakout20)}\n"
         f"다음 ADD {fmt(result.add2)} / STOP {fmt(result.initial_stop)} / EXIT {fmt(result.exit10)}\n"
         f"제안 {quantity:,}주 · 약 {fmt(amount)} / Risk budget {fmt(risk_budget)}\n"
         f"거리 {result.distance_pct:.2f}% · ATR20 {fmt(result.atr20)} · Quality {result.score}"
@@ -85,11 +87,16 @@ def monitor_once(
                 prealert_pct=float(os.getenv("PREALERT_PCT", "1.0")),
                 min_avg_value20=float(os.getenv("MIN_AVG_VALUE20", "10000000000")),
                 min_score=int(os.getenv("MIN_SCORE", "55")),
+                today_high=snapshot.quote.day_high,
             )
             if result.stage in {"PREALERT", "BREAKOUT"}:
                 event_key = f"candidate:{symbol}:{result.breakout20:.4f}:{result.stage}"
                 if event_once(event_key, symbol, result.stage):
-                    signal_notifier.send(_candidate_message(symbol, snapshot.quote.price, result))
+                    signal_notifier.send(
+                        _candidate_message(
+                            symbol, snapshot.quote.price, snapshot.quote.day_high, result
+                        )
+                    )
         except Exception as exc:
             print(f"candidate {symbol}: {exc}", flush=True)
 

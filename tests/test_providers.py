@@ -1,6 +1,8 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from app.providers import (
     FallbackMarketDataProvider,
     MarketSnapshot,
@@ -73,9 +75,12 @@ def test_naver_quote_prefers_open_nxt_session_price(monkeypatch):
     session = QuoteSession(
         {
             "nv": 1_674_000,
+            "hv": 1_680_000,
+            "pcv": 1_600_000,
             "aq": 0,
             "nxtOverMarketPriceInfo": {
                 "overPrice": "1,670,000",
+                "highPrice": "1,700,000",
                 "accumulatedTradingVolumeRaw": "84351",
                 "tradeStopType": {"name": "TRADING"},
                 "tradableStatus": "tradable",
@@ -86,6 +91,8 @@ def test_naver_quote_prefers_open_nxt_session_price(monkeypatch):
     quote = provider.get_current_price("000660")
     assert quote.price == 1_670_000
     assert quote.volume == 84_351
+    assert quote.day_high == 1_700_000
+    assert quote.change_pct == pytest.approx(4.375)
 
 
 def test_naver_quote_uses_regular_price_when_nxt_is_closed(monkeypatch):
@@ -93,6 +100,8 @@ def test_naver_quote_uses_regular_price_when_nxt_is_closed(monkeypatch):
     session = QuoteSession(
         {
             "nv": 1_674_000,
+            "hv": 1_680_000,
+            "pcv": 1_600_000,
             "aq": 123,
             "nxtOverMarketPriceInfo": {
                 "overPrice": "1,670,000",
@@ -105,6 +114,8 @@ def test_naver_quote_uses_regular_price_when_nxt_is_closed(monkeypatch):
     quote = provider.get_current_price("000660")
     assert quote.price == 1_674_000
     assert quote.volume == 123
+    assert quote.day_high == 1_680_000
+    assert quote.change_pct == pytest.approx(4.625)
 
 
 def test_quote_history_scale_mismatch_is_rejected():

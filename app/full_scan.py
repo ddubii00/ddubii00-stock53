@@ -262,6 +262,7 @@ def scan_full_market(
             min_avg_value20=min_avg_value20,
             prealert_pct=config.prealert_pct,
             min_score=min_score,
+            today_high=snapshot.quote.day_high,
         )
         if result.stage not in stages:
             return None
@@ -295,6 +296,7 @@ def scan_full_market(
             fiscal_period=member.fiscal_period,
             asset_type=member.asset_type,
             current=snapshot.quote.price,
+            today_high=snapshot.quote.day_high,
             today_change_pct=today_change_pct,
             source=snapshot.quote.source,
             investor_date=flow.date if flow else None,

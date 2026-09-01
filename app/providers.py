@@ -25,6 +25,8 @@ class Quote:
     price: float
     volume: float = 0.0
     source: str = ""
+    day_high: float | None = None
+    change_pct: float | None = None
 
 
 @dataclass(frozen=True)
@@ -96,10 +98,13 @@ def validate_snapshot_price_scale(
 
     if not snapshot.bars or snapshot.bars[-1].close <= 0:
         raise RuntimeError("completed price history has no valid previous close")
-    change_pct = (snapshot.quote.price / snapshot.bars[-1].close - 1.0) * 100.0
-    if abs(change_pct) > max_abs_change_pct:
+    previous_close = snapshot.bars[-1].close
+    change_pct = (snapshot.quote.price / previous_close - 1.0) * 100.0
+    trigger_price = max(snapshot.quote.price, snapshot.quote.day_high or snapshot.quote.price)
+    trigger_change_pct = (trigger_price / previous_close - 1.0) * 100.0
+    if max(abs(change_pct), abs(trigger_change_pct)) > max_abs_change_pct:
         raise RuntimeError(
-            f"quote/history scale mismatch ({change_pct:.2f}% vs D-1); "
+            f"quote/history scale mismatch ({trigger_change_pct:.2f}% vs D-1); "
             "possible split/consolidation, signal skipped"
         )
     return change_pct
@@ -161,7 +166,14 @@ class DemoMarketDataProvider:
         breakout = max(b.high for b in bars[-20:])
         bucket = sum(int(ch) for ch in symbol if ch.isdigit()) % 3
         price = breakout * (1.002 if bucket == 0 else 0.994 if bucket == 1 else 0.97)
-        return Quote(symbol=symbol, price=price, volume=1_100_000, source=self.name)
+        return Quote(
+            symbol=symbol,
+            price=price,
+            volume=1_100_000,
+            source=self.name,
+            day_high=price,
+            change_pct=(price / bars[-1].close - 1.0) * 100.0,
+        )
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
         price = self.get_current_price(symbol).price
@@ -255,6 +267,8 @@ class NaverMarketDataProvider:
             row = response.json()["result"]["areas"][0]["datas"][0]
             price = _number(row.get("nv") or row.get("closePrice") or row.get("nowVal"))
             volume = _number(row.get("aq") or row.get("accQuant") or 0)
+            day_high = _number(row.get("hv") or row.get("highPrice") or price)
+            previous_close = _number(row.get("pcv") or 0)
             # Naver exposes the tradable NXT pre/after-market quote separately.
             # Prefer it only while that session is actually open; otherwise `nv`
             # remains the regular-market live quote (or the latest close).
@@ -267,11 +281,24 @@ class NaverMarketDataProvider:
             if nxt_trading and nxt_price > 0:
                 price = nxt_price
                 volume = _number(nxt.get("accumulatedTradingVolumeRaw") or volume)
+            day_high = max(day_high, _number(nxt.get("highPrice") or 0), price)
+            change_pct = (
+                (price / previous_close - 1.0) * 100.0
+                if previous_close > 0
+                else _number(row.get("cr") or 0)
+            )
         except Exception as exc:
             raise RuntimeError(f"Unexpected Naver quote response for {symbol}") from exc
         if price <= 0:
             raise RuntimeError(f"Naver returned an invalid quote for {symbol}")
-        return Quote(symbol=symbol, price=price, volume=volume, source=self.name)
+        return Quote(
+            symbol=symbol,
+            price=price,
+            volume=volume,
+            source=self.name,
+            day_high=day_high,
+            change_pct=change_pct,
+        )
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
         response = self._session().get(
@@ -344,7 +371,16 @@ class KrxMarketDataProvider:
         if frame.empty:
             raise RuntimeError(f"KRX returned no quote for {symbol}")
         row = frame.iloc[-1]
-        return Quote(symbol=symbol, price=_number(row["종가"]), volume=_number(row["거래량"]), source=self.name)
+        previous_close = _number(frame.iloc[-2]["종가"]) if len(frame) >= 2 else 0.0
+        price = _number(row["종가"])
+        return Quote(
+            symbol=symbol,
+            price=price,
+            volume=_number(row["거래량"]),
+            source=self.name,
+            day_high=_number(row["고가"]),
+            change_pct=(price / previous_close - 1.0) * 100.0 if previous_close > 0 else None,
+        )
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
         end = _today_kst_date()
@@ -426,6 +462,8 @@ class KisMarketDataProvider:
             price=_number(out.get("stck_prpr")),
             volume=_number(out.get("acml_vol")),
             source=self.name,
+            day_high=_number(out.get("stck_hgpr")),
+            change_pct=_number(out.get("prdy_ctrt")),
         )
 
     def get_daily_ohlcv(self, symbol: str, count: int = 260) -> list[Bar]:
