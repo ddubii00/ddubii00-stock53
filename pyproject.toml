@@ -1,0 +1,13 @@
+[project]
+name = "turtle-signal-guide"
+version = "0.6.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.116.1",
+  "pydantic==2.11.7",
+  "requests==2.32.5",
+  "uvicorn[standard]==0.35.0",
+]
+
+[tool.vercel]
+entrypoint = "api.index:app"

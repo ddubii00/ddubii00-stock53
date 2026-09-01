@@ -1,10 +1,17 @@
 from fastapi.testclient import TestClient
+from pathlib import Path
 import time
+import tomllib
 
 from api.index import app
 
 
 client = TestClient(app)
+
+
+def test_vercel_fastapi_entrypoint_is_explicit():
+    config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    assert config["tool"]["vercel"]["entrypoint"] == "api.index:app"
 
 
 def test_required_vercel_routes_work_without_kis_keys(monkeypatch):

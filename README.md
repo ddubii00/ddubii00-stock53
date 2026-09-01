@@ -117,7 +117,7 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 
 ## UI 동작
 
-- `↻ 새로고침`: 후보와 저장된 추적종목 가이드를 각각 한 번 조회
+- `↻ 새로고침`: 현재 범위의 후보 snapshot과 저장된 추적종목 가이드를 각각 한 번 조회. 전체 상장주식 목록·재무·신호를 처음부터 다시 계산하지 않음
 - `실시간`: ON이면 초록색 `● 검색중`, 기본 30초 browser polling
 - poll 간격: `REALTIME_POLL_SECONDS`
 - 중복 fetch cycle 방지
@@ -126,7 +126,7 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - PREALERT/BREAKOUT 버튼: 신호를 전환하고 전체시장에서는 새 검색 실행
 - 전체시장 필터: 시장, 최소 시가총액, 최소 영업이익, 10D 평균거래대금, 외인/기관 수급, BREAKOUT 당일 상승률
 - 표 머리글: 첫 클릭 내림차순, 두 번째 클릭 오름차순
-- `전체시장 새 검색`: 로컬/Oracle background scan을 시작하고 진행률 표시
+- `전체시장 새 검색`: 로컬/Oracle에서 KOSPI/KOSDAQ 상장주식 목록부터 시총·영업이익·선택 필터·신호를 전부 다시 계산하고 진행률 표시
 - 전체검색 중복 실행 방지, 일반 실시간 polling은 마지막 snapshot만 재조회
 - Vercel 상태: `localStorage`
 - `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가
@@ -162,7 +162,7 @@ Quality Score는 다음 지표로 후보를 정렬하기 위한 정보이며 돌
 
 ## Vercel
 
-GitHub 저장소 root를 Vercel에서 Import하면 됩니다. `api/index.py`의 `app`이 FastAPI entrypoint이고 root `index.html`은 정적 UI입니다.
+GitHub 저장소 root를 Vercel에서 Import하면 됩니다. `pyproject.toml`의 `[tool.vercel] entrypoint = "api.index:app"`이 FastAPI 진입점을 명시하고 root `index.html`은 UI입니다.
 
 권장 환경변수:
 
@@ -173,7 +173,7 @@ REALTIME_POLL_SECONDS=30
 ENABLE_KRX_FALLBACK=0
 ```
 
-KIS 키 없이도 Naver 실패 시 Demo까지 fallback되어 화면이 열립니다. Vercel에는 worker, 영구 loop, WebSocket, SQLite 영속화를 두지 않습니다. Preview에서 `/`, `/api/health`, `/api/candidates?provider=demo`, `/api/guide?provider=demo`를 확인하세요.
+KIS 키 없이도 Naver 실패 시 Demo까지 fallback되어 화면이 열립니다. Vercel에서는 검색 범위를 자동으로 `직접 입력 종목`으로 전환하며, `↻ 새로고침`으로 해당 종목들을 다시 조회합니다. `전체시장 새 검색`은 Oracle/로컬 전용입니다. Vercel에는 worker, 영구 loop, WebSocket, SQLite 영속화를 두지 않습니다. Preview에서 `/`, `/api/health`, `/api/candidates?provider=demo`, `/api/guide?provider=demo`를 확인하세요.
 
 Vercel에서 전체시장 최신 결과까지 표시하려면 Oracle scanner 결과를 PostgreSQL/Supabase 등 외부 영속 store로 옮기고 `full_market_scans` repository adapter를 연결하세요. 기본 구현은 로컬/Oracle SQLite입니다.
 

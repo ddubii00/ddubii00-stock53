@@ -40,7 +40,7 @@
   <h2 class="section">후보 검색</h2>
   <section class="card scanPanel">
     <div class="formGrid">
-      <div class="field"><label for="scanScope">검색 범위</label><select id="scanScope"><option value="all" selected>KOSPI/KOSDAQ 전체</option><option value="watchlist">직접 입력 종목</option></select></div>
+      <div class="field"><label for="scanScope">검색 범위</label><select id="scanScope"><option value="all" selected>KOSPI/KOSDAQ 전체 · Oracle</option><option value="watchlist">직접 입력 종목 · Vercel 가능</option></select></div>
       <div class="field fullMarketField"><label for="marketScope">시장 필터</label><select id="marketScope"><option value="ALL">KOSPI + KOSDAQ 전체</option><option value="KOSPI">KOSPI만</option><option value="KOSDAQ">KOSDAQ만</option></select></div>
       <div class="field fullMarketField"><label for="minMarketCap">최소 시가총액 (억원)</label><input id="minMarketCap" type="number" value="500" min="0" step="100"></div>
       <div class="field fullMarketField"><label for="minOperatingProfit">최소 영업이익 (억원)</label><input id="minOperatingProfit" type="number" value="50" step="10"></div>
@@ -61,6 +61,7 @@
       <span id="lastUpdated" class="muted tiny right">마지막 조회: -</span>
     </div>
     <div id="scanProgress" class="muted tiny scanProgress" aria-live="polite">저장된 결과를 조회하거나 전체시장 새 검색을 눌러주세요.</div>
+    <div class="notice" style="margin:10px 0 0"><b>버튼 차이:</b> <b>↻ 새로고침</b>은 지금 화면의 후보와 선택 종목 시세를 한 번 다시 조회합니다. <b>전체시장 새 검색</b>은 Oracle/로컬에서 KOSPI·KOSDAQ 상장주식 목록부터 필터와 신호를 전부 다시 계산합니다.</div>
   </section>
   <div class="notice"><b>신호:</b> PREALERT는 현재가가 직전 20일 High 아래 설정 범위에 접근한 종목입니다. BREAKOUT은 어제까지 돌파하지 않았고 오늘 처음 직전 20일 High를 넘은 종목만 표시합니다. Naver 수급액은 순매수수량×가격의 추정값이며 KIS 공식 당일 투자자 데이터는 장 종료 후 제공됩니다.</div>
   <div class="tableWrap">
@@ -137,6 +138,12 @@ let signalMode='prealert',candidateItems=[],candidateNote='',sortState={key:'mar
 const activeFilters={avgValue10:true,investor:false,todayChange:false};
 
 function actionClass(action){return action==='ADD_NOW'||action==='ENTRY_NOW'?'green':action==='STOP_NOW'||action==='EXIT_NOW'?'red':action==='WAIT_ENTRY'?'yellow':'blue'}
+async function fetchJson(url,options){
+  const response=await fetch(url,options),text=await response.text();let data;
+  try{data=text?JSON.parse(text):{}}
+  catch{const excerpt=text.replace(/\s+/g,' ').trim().slice(0,120)||'빈 응답';throw new Error(`API ${response.status} 비정상 응답: ${excerpt}`)}
+  if(!response.ok)throw new Error(data.detail||data.message||`API ${response.status}`);return {response,data};
+}
 function stored(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
 function storedScanConfig(){try{return JSON.parse(localStorage.getItem(SCAN_CONFIG_KEY)||'null')}catch{return null}}
 function stageClass(stage){return stage==='BREAKOUT'?'green':stage==='PREALERT'?'yellow':stage==='ERROR'?'red':''}
@@ -256,7 +263,7 @@ function sortCandidates(key){sortState=sortState.key===key?{key,direction:sortSt
 async function loadCandidates(){
   const provider=el('provider').value,scope=el('scanScope').value,params=new URLSearchParams({provider,scope,prealert_pct:String(num('prealertPct'))});
   if(scope==='watchlist')params.set('symbols',el('symbolsInput').value.trim());else if(lastScanId)params.set('scan_id',String(lastScanId));
-  const response=await fetch('/api/candidates?'+params.toString()),data=await response.json();if(!response.ok)throw new Error(data.detail||'candidate fetch failed');
+  const {data}=await fetchJson('/api/candidates?'+params.toString());
   el('providerNote').textContent='Provider: '+data.provider+' · '+data.note;
   if(data.full_market_scan){
     const options=data.options||{},market=options.market==='KOSPI'?'KOSPI만':options.market==='KOSDAQ'?'KOSDAQ만':'KOSPI+KOSDAQ';
@@ -264,8 +271,13 @@ async function loadCandidates(){
     el('scanProgress').textContent=data.scan_status==='COMPLETED'?`검색 #${data.scan_id} · 범위 ${market} 상장주식 전체 ${listed?listed.toLocaleString('ko-KR'):'확인 전'}개${marketCounts}, ETF/ETN 제외 → 시총 통과 ${Number(data.universe_count||0).toLocaleString('ko-KR')}개 → 영업이익 통과 ${Number(data.fundamentals_passed||0).toLocaleString('ko-KR')}개 → 후보 ${(data.items||[]).length.toLocaleString('ko-KR')}개 · 오류 ${Number(data.error_count||0).toLocaleString('ko-KR')}개`:data.note;
   }
   const received=data.items||[];
-  candidateItems=scope==='watchlist'?received.filter(item=>item.stage==='ERROR'||item.stage===(signalMode==='breakout'?'BREAKOUT':'PREALERT')):received;
-  candidateNote=data.note;renderCandidates();
+  if(scope==='watchlist'){
+    const targetStage=signalMode==='breakout'?'BREAKOUT':'PREALERT',errors=received.filter(item=>item.stage==='ERROR').length;
+    candidateItems=received.filter(item=>item.stage==='ERROR'||item.stage===targetStage);
+    candidateNote=`직접 입력 ${received.length.toLocaleString('ko-KR')}개 조회 완료 · ${targetStage} ${candidateItems.length-errors}개${errors?` · 오류 ${errors}개`:''}`;
+    el('scanProgress').textContent=candidateNote+' · 신호가 없으면 표가 비어 있는 것이 정상입니다.';
+  }else{candidateItems=received;candidateNote=data.note}
+  renderCandidates();
   const current=candidateItems.find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||candidateItems.find(item=>item.stage!=='ERROR');if(current)showCandidate(current,{populateTracking:!stored()});
 }
 
@@ -275,10 +287,10 @@ async function startFullMarketScan(){
   if(!fullScanSupported){alert('전체시장 검색은 Oracle 또는 로컬 APP_MODE=oracle에서 실행하세요. Vercel은 마지막 저장 결과만 표시합니다.');return}
   fullScanBusy=true;saveScanConfig();el('marketScanBtn').disabled=true;el('refreshBtn').disabled=true;el('marketScanBtn').textContent='전체시장 검색중...';el('scanState').textContent='검색중';
   try{
-    let response=await fetch('/api/full-market-scans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(scanConfig())});
-    let data=await response.json();if(!response.ok)throw new Error(data.detail||'전체시장 검색 시작 실패');lastScanId=Number(data.scan_id);localStorage.setItem(SCAN_ID_KEY,String(lastScanId));
+    let result=await fetchJson('/api/full-market-scans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(scanConfig())});
+    let data=result.data;lastScanId=Number(data.scan_id);localStorage.setItem(SCAN_ID_KEY,String(lastScanId));
     while(true){
-      response=await fetch('/api/full-market-scans/'+lastScanId);data=await response.json();if(!response.ok)throw new Error(data.detail||'검색 상태 조회 실패');
+      result=await fetchJson('/api/full-market-scans/'+lastScanId);data=result.data;
       const progress=data.total?Math.min(100,Math.round(Number(data.processed||0)/Number(data.total)*100)):0;
       el('scanProgress').textContent=`검색 #${lastScanId} · ${data.message||data.phase} ${data.total?`(${Number(data.processed||0).toLocaleString('ko-KR')}/${Number(data.total).toLocaleString('ko-KR')}, ${progress}%)`:''}`;
       if(data.status==='COMPLETED')break;if(data.status==='FAILED')throw new Error(data.message||'전체시장 검색 실패');await delay(1000);
@@ -294,7 +306,7 @@ function guidePayload(){
 }
 async function calculateGuide(showErrors=true){
   const payload=guidePayload();if(!payload.symbol||!payload.entry_price)return null;
-  try{const response=await fetch('/api/guide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),data=await response.json();if(!response.ok)throw new Error(data.detail||'guide failed');showGuide(data);return data}
+  try{const {data}=await fetchJson('/api/guide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});showGuide(data);return data}
   catch(error){if(showErrors)alert('가이드 계산 실패: '+error.message);throw error}
 }
 function unitText(data,index){const levels=data.add_levels||[],qty=data.unit_quantities||[];return levels[index]?fmt(levels[index])+' × '+(qty[index]??0).toLocaleString('ko-KR')+'주':'-'}
@@ -361,7 +373,7 @@ el('scanScope').addEventListener('change',()=>{updateScanVisibility();loadCandid
 el('prealertPct').addEventListener('input',renderPrealertPct);el('gSymbol').addEventListener('input',()=>{if(el('gSymbol').value.trim()!==selected?.symbol)trackingName='';renderTrackingName()});
 el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',saveTracking);el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',clearTracking);el('sizingMode').addEventListener('change',updateSizingVisibility);el('exitStrategy').addEventListener('change',()=>calculateGuide(false).catch(()=>{}));
 restoreTracking();
-fetch('/api/health').then(response=>response.json()).then(async data=>{fullScanSupported=Boolean(data.full_market_scan_supported);el('marketScanBtn').disabled=el('scanScope').value==='all'&&!fullScanSupported;el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';const pollSeconds=Math.max(3,Number(data.realtime_poll_seconds||30));realtimeMs=pollSeconds*1000;el('pollInterval').textContent='주기 '+pollSeconds+'초';if(!fullScanSupported)el('scanProgress').textContent='Vercel에서는 전체검색을 실행하지 않습니다. 직접 입력 종목을 조회하거나 Oracle scanner 결과를 연결하세요.';await loadCandidates()}).catch(error=>{el('health').textContent='API 미연결';el('scanProgress').textContent='후보 조회 실패: '+error.message});
+fetchJson('/api/health').then(result=>result.data).then(async data=>{fullScanSupported=Boolean(data.full_market_scan_supported);el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';const pollSeconds=Math.max(3,Number(data.realtime_poll_seconds||30));realtimeMs=pollSeconds*1000;el('pollInterval').textContent='주기 '+pollSeconds+'초';if(!fullScanSupported){el('scanScope').value='watchlist';updateScanVisibility();el('scanProgress').textContent='Vercel 모드: 직접 입력 종목을 Naver 시세로 조회합니다. 전체시장 새 검색은 Oracle/로컬에서 실행합니다.'}else el('marketScanBtn').disabled=false;await loadCandidates()}).catch(error=>{el('health').textContent='API 미연결';el('scanProgress').textContent='API 연결 실패: '+error.message+' · Vercel 배포의 FastAPI 함수 설정을 확인하세요.'});
 </script>
 </body>
 </html>
