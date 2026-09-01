@@ -58,6 +58,8 @@ class NaverUniverseProvider:
         self.timeout = timeout
         self.page_size = max(1, min(page_size, 100))
         self._local = threading.local()
+        self.last_listed_count = 0
+        self.last_market_counts: dict[str, int] = {"KOSPI": 0, "KOSDAQ": 0}
 
     def _session(self) -> requests.Session:
         session = getattr(self._local, "session", None)
@@ -109,6 +111,8 @@ class NaverUniverseProvider:
     ) -> list[UniverseMember]:
         members: list[UniverseMember] = []
         markets = self._markets(market)
+        seen_symbols: set[str] = set()
+        market_symbols: dict[str, set[str]] = {"KOSPI": set(), "KOSDAQ": set()}
         pages_done = 0
         for market_name in markets:
             page = 1
@@ -123,18 +127,22 @@ class NaverUniverseProvider:
                 stocks = payload.get("stocks") or []
                 if not stocks:
                     break
-                below_threshold = False
                 for row in stocks:
+                    if str(row.get("stockEndType") or "stock").lower() != "stock":
+                        continue
+                    symbol = str(row.get("itemCode") or "").strip().upper()
+                    if len(symbol) != 6 or not symbol.isalnum():
+                        continue
+                    market_symbols[market_name].add(symbol)
                     try:
                         market_cap = self._market_cap_100m(row)
                     except (TypeError, ValueError):
                         continue
                     if market_cap < min_market_cap_100m:
-                        below_threshold = True
                         continue
-                    symbol = str(row.get("itemCode") or "").strip()
-                    if len(symbol) != 6 or not symbol.isdigit():
+                    if symbol in seen_symbols:
                         continue
+                    seen_symbols.add(symbol)
                     members.append(
                         UniverseMember(
                             symbol=symbol,
@@ -148,9 +156,13 @@ class NaverUniverseProvider:
                     total_count = int(payload.get("totalCount") or 0)
                     page_total = math.ceil(total_count / self.page_size) if total_count else page
                     progress(pages_done, page_total * len(markets), f"{market_name} 시가총액 목록 {page}페이지")
-                if below_threshold or len(stocks) < self.page_size:
+                if len(stocks) < self.page_size:
                     break
                 page += 1
+        self.last_market_counts = {
+            market_name: len(market_symbols[market_name]) for market_name in ("KOSPI", "KOSDAQ")
+        }
+        self.last_listed_count = sum(self.last_market_counts.values())
         return members
 
     def get_operating_profit(self, member: UniverseMember) -> UniverseMember:
@@ -203,6 +215,10 @@ class DemoUniverseProvider:
         ("145020", "휴젤", "KOSDAQ", 35_000, 1_200),
     ]
 
+    def __init__(self):
+        self.last_listed_count = 0
+        self.last_market_counts: dict[str, int] = {"KOSPI": 0, "KOSDAQ": 0}
+
     def list_members(
         self,
         market: str,
@@ -210,6 +226,13 @@ class DemoUniverseProvider:
         progress: ProgressCallback | None = None,
     ) -> list[UniverseMember]:
         selected = market.upper()
+        self.last_market_counts = {
+            market_name: sum(1 for row in self._members if row[2] == market_name)
+            if selected in {"ALL", market_name}
+            else 0
+            for market_name in ("KOSPI", "KOSDAQ")
+        }
+        self.last_listed_count = sum(self.last_market_counts.values())
         rows = [
             UniverseMember(symbol, name, item_market, cap, profit, "DEMO", self.name)
             for symbol, name, item_market, cap, profit in self._members

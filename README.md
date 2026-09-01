@@ -61,7 +61,7 @@ fallback은 일봉과 현재가를 같은 provider에서 성공시킨 뒤 하나
 
 - `DemoMarketDataProvider`: 키 없는 UI/API 테스트
 - `NaverMarketDataProvider`: Vercel 소수 watchlist 탐색
-- `NaverUniverseProvider`: KOSPI/KOSDAQ 시가총액 목록과 최근 확정 연간 영업이익
+- `NaverUniverseProvider`: KOSPI/KOSDAQ 상장주식 전체 페이지(ETF/ETN 제외, 영문 혼합 종목코드 포함)와 최근 확정 연간 영업이익
 - `DemoUniverseProvider`: 키 없는 전체검색 API/UI 테스트
 - `KrxMarketDataProvider`: `pykrx` 선택 fallback
 - `KisMarketDataProvider`: Oracle 실전 신호 우선 REST 데이터
@@ -75,7 +75,7 @@ Naver 현재가는 정규장 live quote를 사용하고, NXT 프리/애프터마
 
 ## KOSPI/KOSDAQ 전체 PREALERT 검색
 
-전체검색은 약 4천 개 차트를 무조건 요청하지 않습니다.
+전체검색은 Naver의 KOSPI/KOSDAQ 시가총액 목록을 마지막 페이지까지 조회하되 ETF/ETN은 제외합니다. 시가총액·영업이익을 먼저 적용하므로 모든 종목의 차트를 무조건 요청하지 않습니다.
 
 ```text
 KOSPI/KOSDAQ 종목목록
@@ -87,7 +87,7 @@ KOSPI/KOSDAQ 종목목록
 → SQLite 결과 snapshot
 ```
 
-기본값은 시가총액 500억원 이상, 영업이익 50억원 이상, 10일 평균거래대금 500억원 이상이며 UI에서 숫자를 바꿀 수 있습니다. 각 선택 필터의 `×`를 누르면 그 조건을 제외할 수 있습니다. 외인/기관은 각각 또는 합산 순매수액을 설정할 수 있고, `0억원`은 순매수 여부만 확인합니다. Naver 수급액은 순매수수량×가격의 추정값이며 KIS 공식 투자자 데이터는 장 종료 후 확정되는 데이터입니다. 영업이익을 제공하지 않는 ETF·ETN 등은 제외합니다. 재무값은 기본 7일 캐시하고 시세 신호는 새 검색 때 다시 계산합니다.
+기본값은 시가총액 500억원 이상, 영업이익 50억원 이상, 10일 평균거래대금 500억원 이상이며 UI에서 숫자를 바꿀 수 있습니다. 각 선택 필터의 `×`를 누르면 그 조건을 제외할 수 있습니다. 외인/기관은 각각 또는 합산 순매수액을 설정할 수 있고, `0억원`은 순매수 여부만 확인합니다. Naver 수급액은 순매수수량×가격의 추정값이며 KIS 공식 투자자 데이터는 장 종료 후 확정되는 데이터입니다. ETF·ETN은 종목목록 단계에서 제외하고, 신규·우선주에 쓰이는 영문 혼합 6자리 종목코드는 포함합니다. 화면에는 KOSPI/KOSDAQ 원천 상장주식 수와 각 필터 통과 수를 함께 표시합니다. 재무값은 기본 7일 캐시하고 시세 신호는 새 검색 때 다시 계산합니다.
 
 PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. BREAKOUT은 `현재가 >= 직전 완료 20거래일 High`이면서 어제 이미 돌파하지 않은, 오늘 최초 돌파만 반환합니다. BREAKOUT의 `당일 5% 이상` 필터는 선택 사항이며 제거하면 상승률과 관계없이 정상 20D 돌파를 찾습니다.
 
@@ -121,7 +121,7 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - `실시간`: ON이면 초록색 `● 검색중`, 기본 30초 browser polling
 - poll 간격: `REALTIME_POLL_SECONDS`
 - 중복 fetch cycle 방지
-- 후보 행 클릭: 상세·Entry/ATR 기본값 표시. 저장된 추적 종목은 자동 후보 선택으로 덮어쓰지 않음
+- 후보 행 클릭: 상세·Entry/ATR 기본값 표시. 종목명 클릭 시 `stock.naver.com` 해당 종목을 새 탭으로 엶. 저장된 추적 종목은 자동 후보 선택으로 덮어쓰지 않음
 - 검색 범위: `KOSPI/KOSDAQ 전체` 또는 `직접 입력 종목`
 - PREALERT/BREAKOUT 버튼: 신호를 전환하고 전체시장에서는 새 검색 실행
 - 전체시장 필터: 시장, 최소 시가총액, 최소 영업이익, 10D 평균거래대금, 외인/기관 수급, BREAKOUT 당일 상승률

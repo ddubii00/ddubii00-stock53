@@ -150,7 +150,16 @@ def scan_full_market(
         lambda done, total, message: report("universe", done, total, message),
     )
     universe_count = len(members)
-    report("fundamentals", 0, universe_count, f"시총 통과 {universe_count:,}개 · 영업이익 확인중")
+    listed_count = int(getattr(universe, "last_listed_count", universe_count))
+    market_counts = getattr(universe, "last_market_counts", {})
+    kospi_count = int(market_counts.get("KOSPI", 0))
+    kosdaq_count = int(market_counts.get("KOSDAQ", 0))
+    report(
+        "fundamentals",
+        0,
+        universe_count,
+        f"상장주식 {listed_count:,}개 전체 확인 · 시총 통과 {universe_count:,}개 · 영업이익 확인중",
+    )
 
     errors = 0
     ready: list[UniverseMember] = []
@@ -285,10 +294,16 @@ def scan_full_market(
     summary = {
         "processed": completed,
         "total": total,
+        "listed_count": listed_count,
+        "kospi_count": kospi_count,
+        "kosdaq_count": kosdaq_count,
         "universe_count": universe_count,
         "fundamentals_passed": total,
         "error_count": errors,
-        "message": f"시총 통과 {universe_count:,}개 → 재무 통과 {total:,}개 → 선택 옵션 통과 후보 {len(items):,}개",
+        "message": (
+            f"상장주식 전체 {listed_count:,}개(ETF/ETN 제외) → 시총 통과 {universe_count:,}개 "
+            f"→ 재무 통과 {total:,}개 → 선택 옵션 통과 후보 {len(items):,}개"
+        ),
     }
     return items, summary
 

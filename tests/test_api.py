@@ -19,6 +19,9 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     candidates = client.get("/api/candidates", params={"provider": "demo", "symbols": "000660"})
     assert candidates.status_code == 200
     assert candidates.json()["items"][0]["source"] == "demo"
+    alphanumeric_quote = client.get("/api/quote/0126z0", params={"provider": "demo"})
+    assert alphanumeric_quote.status_code == 200
+    assert alphanumeric_quote.json()["symbol"] == "0126Z0"
 
 
 def test_guide_route_returns_position_action():
@@ -81,6 +84,9 @@ def test_full_market_scan_demo_is_persisted_and_read_by_candidates(monkeypatch, 
             break
         time.sleep(0.02)
     assert status.json()["status"] == "COMPLETED"
+    assert status.json()["listed_count"] == 15
+    assert status.json()["kospi_count"] == 8
+    assert status.json()["kosdaq_count"] == 7
     assert status.json()["universe_count"] == 15
     assert status.json()["fundamentals_passed"] == 15
 
@@ -89,6 +95,9 @@ def test_full_market_scan_demo_is_persisted_and_read_by_candidates(monkeypatch, 
     payload = candidates.json()
     assert payload["full_market_scan"] is True
     assert payload["scan_status"] == "COMPLETED"
+    assert payload["listed_count"] == 15
+    assert payload["kospi_count"] == 8
+    assert payload["kosdaq_count"] == 7
     assert all(item["stage"] == "PREALERT" for item in payload["items"])
 
 

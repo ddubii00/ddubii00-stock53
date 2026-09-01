@@ -24,6 +24,32 @@ class FakeSession:
         return FakeResponse(self.responses.pop(0))
 
 
+class RoutedUniverseSession:
+    def __init__(self):
+        self.calls = []
+
+    def get(self, url, params=None, **kwargs):
+        market = url.rsplit("/", 1)[-1]
+        page = int((params or {}).get("page", 1))
+        self.calls.append((market, page))
+        rows = {
+            ("KOSPI", 1): [
+                {"itemCode": "005930", "stockName": "삼성전자", "stockEndType": "stock", "marketValueRaw": "60000000000"},
+                {"itemCode": "069500", "stockName": "KODEX 200", "stockEndType": "etf", "marketValueRaw": "70000000000"},
+            ],
+            ("KOSPI", 2): [
+                {"itemCode": "0126Z0", "stockName": "영문혼합주", "stockEndType": "stock", "marketValueRaw": "55000000000"},
+                {"itemCode": "005930", "stockName": "삼성전자 중복", "stockEndType": "stock", "marketValueRaw": "60000000000"},
+            ],
+            ("KOSDAQ", 1): [
+                {"itemCode": "247540", "stockName": "에코프로비엠", "stockEndType": "stock", "marketValueRaw": "49900000000"},
+                {"itemCode": "0009K0", "stockName": "신규코드", "stockEndType": "stock", "marketValueRaw": "80000000000"},
+            ],
+            ("KOSDAQ", 2): [],
+        }.get((market, page), [])
+        return FakeResponse({"stocks": rows, "totalCount": 4})
+
+
 def test_naver_universe_applies_market_cap_and_uses_latest_actual_profit(monkeypatch):
     provider = NaverUniverseProvider(page_size=100)
     session = FakeSession(
@@ -72,6 +98,20 @@ def test_naver_universe_applies_market_cap_and_uses_latest_actual_profit(monkeyp
     assert enriched.market_cap_100m == 600
     assert enriched.operating_profit_100m == 55
     assert enriched.fiscal_period == "2025.12."
+
+
+def test_naver_universe_reads_every_market_page_and_filters_only_listed_stocks(monkeypatch):
+    provider = NaverUniverseProvider(page_size=2)
+    session = RoutedUniverseSession()
+    monkeypatch.setattr(provider, "_session", lambda: session)
+
+    members = provider.list_members("ALL", 500)
+
+    assert session.calls == [("KOSPI", 1), ("KOSPI", 2), ("KOSPI", 3), ("KOSDAQ", 1), ("KOSDAQ", 2)]
+    assert [member.symbol for member in members] == ["005930", "0126Z0", "0009K0"]
+    assert all(member.symbol != "069500" for member in members)
+    assert provider.last_listed_count == 4
+    assert provider.last_market_counts == {"KOSPI": 2, "KOSDAQ": 2}
 
 
 class FilterUniverse:

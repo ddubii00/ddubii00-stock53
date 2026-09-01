@@ -22,7 +22,7 @@ from app.strategy import Bar, analyze
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SYMBOL_RE = re.compile(r"^\d{6}$")
+SYMBOL_RE = re.compile(r"^[0-9A-Z]{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
 app = FastAPI(title="Turtle Signal Guide", version="0.6.0")
@@ -91,9 +91,9 @@ class FullMarketScanIn(BaseModel):
 
 
 def _valid_symbol(symbol: str) -> str:
-    value = symbol.strip()
+    value = symbol.strip().upper()
     if not SYMBOL_RE.fullmatch(value):
-        raise ValueError("종목코드는 숫자 6자리여야 합니다")
+        raise ValueError("종목코드는 숫자/영문 대문자 6자리여야 합니다")
     return value
 
 
@@ -193,6 +193,9 @@ def candidates(
             "phase": scan["phase"],
             "processed": scan["processed"],
             "total": scan["total"],
+            "listed_count": scan.get("listed_count", 0),
+            "kospi_count": scan.get("kospi_count", 0),
+            "kosdaq_count": scan.get("kosdaq_count", 0),
             "universe_count": scan["universe_count"],
             "fundamentals_passed": scan["fundamentals_passed"],
             "error_count": scan["error_count"],
