@@ -14,7 +14,12 @@ _INITIALIZED_PATHS: set[str] = set()
 
 
 def db_path() -> str:
-    return os.getenv("DB_PATH", "./data/turtle.db")
+    configured = os.getenv("DB_PATH")
+    if configured:
+        return configured
+    if os.getenv("VERCEL"):
+        return "/tmp/turtle.db"
+    return "./data/turtle.db"
 
 
 def connect() -> sqlite3.Connection:

@@ -91,7 +91,7 @@ KOSPI/KOSDAQ 종목목록
 
 PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. BREAKOUT은 `현재가 >= 직전 완료 20거래일 High`이면서 어제 이미 돌파하지 않은, 오늘 최초 돌파만 반환합니다. BREAKOUT의 `당일 5% 이상` 필터는 선택 사항이며 제거하면 상승률과 관계없이 정상 20D 돌파를 찾습니다.
 
-전체검색은 로컬/Oracle 장기 작업입니다. Vercel serverless 함수에는 background thread를 실행하지 않으며, Vercel UI는 직접 입력 watchlist 또는 외부 Oracle scanner가 저장·제공한 snapshot을 읽는 용도로 둡니다.
+전체검색은 로컬/Oracle에서는 진행률을 저장하는 장기 작업입니다. Vercel에서는 background thread를 실행하지 않고, 사용자가 버튼을 누른 단일 요청 안에서 수동 1회 검색합니다. 완료 결과는 해당 브라우저 `localStorage`에 보관합니다.
 
 ## 로컬 실행
 
@@ -127,6 +127,7 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - 전체시장 필터: 시장, 최소 시가총액, 최소 영업이익, 10D 평균거래대금, 외인/기관 수급, BREAKOUT 당일 상승률
 - 표 머리글: 첫 클릭 내림차순, 두 번째 클릭 오름차순
 - `전체시장 새 검색`: 로컬/Oracle에서 KOSPI/KOSDAQ 상장주식 목록부터 시총·영업이익·선택 필터·신호를 전부 다시 계산하고 진행률 표시
+- Vercel의 `전체시장 새 검색`: 클릭한 요청 안에서 Naver 전체시장을 수동 1회 계산하고 결과를 브라우저에 보관. background worker나 반복 전체검색은 실행하지 않음
 - 전체검색 중복 실행 방지, 일반 실시간 polling은 마지막 snapshot만 재조회
 - Vercel 상태: `localStorage`
 - `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가
@@ -141,6 +142,7 @@ worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지
 | GET | `/` | UI |
 | GET | `/api/health` | provider chain, poll 설정 |
 | GET | `/api/candidates` | watchlist 또는 저장된 전체시장 후보 snapshot |
+| POST | `/api/full-market-scan-once` | Vercel용 수동 1회 전체시장 검색 |
 | POST | `/api/full-market-scans` | 로컬/Oracle 전체시장 검색 시작 |
 | GET | `/api/full-market-scans/{id}` | 검색 진행률·결과 |
 | POST | `/api/scan` | 완료 일봉 직접 분석 |
@@ -164,6 +166,8 @@ Quality Score는 다음 지표로 후보를 정렬하기 위한 정보이며 돌
 
 GitHub 저장소 root를 Vercel에서 Import하면 됩니다. `pyproject.toml`의 `[tool.vercel] entrypoint = "api.index:app"`이 FastAPI 진입점을 명시합니다. `vercel.json`은 `index.html` 정적 UI와 `api/index.py` Python 함수를 각각 빌드하고 `/api/*`를 FastAPI로 전달합니다. 따라서 Vercel 프로젝트가 `Other` 프리셋으로 잡혀도 API 함수가 누락되지 않습니다.
 
+Vercel에서도 `전체시장 새 검색`을 누르면 Naver 전체 상장주식 목록을 기준으로 수동 1회 검색합니다. 서버리스 background 작업은 만들지 않으며, 응답이 끝날 때 후보 결과를 브라우저에 저장합니다. 최초 검색은 재무·일봉 요청이 많아 오래 걸릴 수 있습니다. 제한 시간에 걸리면 시가총액·영업이익·거래대금 기준을 높여 대상 수를 줄인 뒤 다시 실행하는 것이 안전하며, 지속적인 전 종목 감시는 Oracle + KIS worker를 사용합니다.
+
 권장 환경변수:
 
 ```text
@@ -173,9 +177,9 @@ REALTIME_POLL_SECONDS=30
 ENABLE_KRX_FALLBACK=0
 ```
 
-KIS 키 없이도 Naver 실패 시 Demo까지 fallback되어 화면이 열립니다. Vercel에서는 검색 범위를 자동으로 `직접 입력 종목`으로 전환하며, `↻ 새로고침`으로 해당 종목들을 다시 조회합니다. `전체시장 새 검색`은 Oracle/로컬 전용입니다. Vercel에는 worker, 영구 loop, WebSocket, SQLite 영속화를 두지 않습니다. Preview에서 `/`, `/api/health`, `/api/candidates?provider=demo`, `/api/guide?provider=demo`를 확인하세요.
+KIS 키 없이도 Naver 실패 시 Demo까지 fallback되어 화면이 열립니다. `↻ 새로고침`은 마지막 수동 전체검색 결과 또는 직접 입력 종목과 선택 종목 가이드를 다시 표시·조회하고, `전체시장 새 검색`만 전 종목 계산을 새로 시작합니다. Vercel에는 worker, 영구 loop, WebSocket, SQLite 영속화를 두지 않습니다. 전체검색 중의 `/tmp` SQLite는 동일 요청의 임시 재무 캐시일 뿐이며, 결과는 브라우저에 저장됩니다. Preview에서 `/`, `/api/health`, `/api/candidates?provider=demo`, `/api/full-market-scan-once`(POST, demo), `/api/guide?provider=demo`를 확인하세요.
 
-Vercel에서 전체시장 최신 결과까지 표시하려면 Oracle scanner 결과를 PostgreSQL/Supabase 등 외부 영속 store로 옮기고 `full_market_scans` repository adapter를 연결하세요. 기본 구현은 로컬/Oracle SQLite입니다.
+여러 브라우저에서 동일한 전체시장 최신 결과를 공유하려면 Oracle scanner 결과를 PostgreSQL/Supabase 등 외부 영속 store로 옮기고 `full_market_scans` repository adapter를 연결하세요. 기본 공유 저장소는 로컬/Oracle SQLite이며, Vercel 수동 결과는 실행한 브라우저에만 남습니다.
 
 ## Oracle + KIS + Telegram
 

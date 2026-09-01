@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from functools import lru_cache
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from app.full_scan import FullScanConfig, full_scan_jobs
+from app.full_scan import FullScanConfig, full_scan_jobs, scan_full_market
 from app.positions import build_position_guide
 from app.providers import (
     build_market_data_provider,
@@ -121,11 +122,35 @@ def health():
         "kis_configured": bool(os.getenv("KIS_APP_KEY") and os.getenv("KIS_APP_SECRET")),
         "realtime_poll_seconds": max(3, int(os.getenv("REALTIME_POLL_SECONDS", "30"))),
         "full_market_scan_supported": app_mode != "vercel",
+        "manual_full_market_scan_supported": True,
         "realtime_note": (
             "Vercel realtime uses browser polling; no background worker or WebSocket runs in serverless."
             if app_mode == "vercel"
             else "Oracle defaults to polling and can switch to the KIS realtime price adapter."
         ),
+    }
+
+
+@app.post("/api/full-market-scan-once")
+def full_market_scan_once(payload: FullMarketScanIn):
+    """Run one full scan inside the request; intended for a manual Vercel click."""
+
+    config = FullScanConfig(**payload.model_dump()).validate()
+    started = time.monotonic()
+    try:
+        items, summary = scan_full_market(config)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"전체시장 수동 검색 실패: {exc}") from exc
+    return {
+        "provider": config.provider,
+        "full_market_scan": True,
+        "manual_once": True,
+        "scan_status": "COMPLETED",
+        "options": config.to_dict(),
+        "duration_seconds": round(time.monotonic() - started, 1),
+        "note": summary["message"],
+        "items": items,
+        **summary,
     }
 
 

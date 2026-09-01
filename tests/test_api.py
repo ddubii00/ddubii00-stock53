@@ -27,6 +27,7 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     assert health.status_code == 200
     assert health.json()["kis_configured"] is False
     assert health.json()["realtime_poll_seconds"] == 30
+    assert health.json()["manual_full_market_scan_supported"] is True
     candidates = client.get("/api/candidates", params={"provider": "demo", "symbols": "000660"})
     assert candidates.status_code == 200
     assert candidates.json()["items"][0]["source"] == "demo"
@@ -116,3 +117,20 @@ def test_vercel_refuses_background_full_market_worker(monkeypatch):
     monkeypatch.setenv("APP_MODE", "vercel")
     response = client.post("/api/full-market-scans", json={"provider": "demo"})
     assert response.status_code == 409
+
+
+def test_vercel_allows_manual_one_request_full_market_scan(monkeypatch, tmp_path):
+    monkeypatch.setenv("APP_MODE", "vercel")
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "manual-scan.db"))
+    response = client.post(
+        "/api/full-market-scan-once",
+        json={"provider": "demo", "signal_mode": "prealert"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["manual_once"] is True
+    assert payload["scan_status"] == "COMPLETED"
+    assert payload["listed_count"] == 15
+    assert payload["kospi_count"] == 8
+    assert payload["kosdaq_count"] == 7
+    assert all(item["stage"] == "PREALERT" for item in payload["items"])

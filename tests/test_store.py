@@ -1,6 +1,12 @@
 from app import store
 
 
+def test_vercel_default_database_uses_writable_tmp(monkeypatch):
+    monkeypatch.delenv("DB_PATH", raising=False)
+    monkeypatch.setenv("VERCEL", "1")
+    assert store.db_path() == "/tmp/turtle.db"
+
+
 def test_signal_event_dedup(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "turtle.db"))
     assert store.event_once("abc", "000660", "ADD_NOW") is True
