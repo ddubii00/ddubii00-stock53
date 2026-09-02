@@ -85,10 +85,57 @@ def test_live_mode_rechecks_only_the_initial_full_market_candidates():
     cycle = source[cycle_start:cycle_end]
     assert "return refreshLiveCandidateSignals()" in cycle
     assert "startFullMarketScan" not in cycle
-    assert "symbols:seeds.map(item=>item.symbol).join(',')" in source
+    assert "symbols:batch.map(item=>item.symbol).join(',')" in source
+    assert "batchSize=appMode==='vercel'?8:200" in source
     assert "include_filtered:'true'" in source
     assert "조회 오류 ${errorCount}개(다음 주기 재시도)" in source
     assert "전체시장·재무 재검색 없음" in source
+
+
+def test_live_button_is_next_to_manual_full_market_scan_button():
+    source = INDEX.read_text(encoding="utf-8")
+    controls = source[source.index('id="marketScanBtn"') : source.index('id="providerNote"')]
+    assert 'id="liveBtn"' in controls
+    assert controls.index('id="marketScanBtn"') < controls.index('id="liveBtn"')
+    assert '>실시간</button>' in controls
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is needed for frontend JS test")
+def test_live_stage_and_target_distance_follow_current_price():
+    source = INDEX.read_text(encoding="utf-8")
+    start = source.index("function changeClass")
+    end = source.index("function naverStockUrl", start)
+    helpers = source[start:end]
+    script = "\n".join(
+        [
+            helpers,
+            "const below={stage:'BREAKOUT',current:99.5,breakout20:100,yesterday_broke:false};",
+            "const above={stage:'PREALERT',current:100.5,breakout20:100,yesterday_broke:false};",
+            "const far={stage:'PREALERT',current:98,breakout20:100,yesterday_broke:false};",
+            "process.stdout.write(JSON.stringify({",
+            "belowDistance:signedPct(targetDistancePct(below)),belowClass:changeClass(targetDistancePct(below)),",
+            "aboveDistance:signedPct(targetDistancePct(above)),aboveClass:changeClass(targetDistancePct(above)),",
+            "down:classifyLiveStage(below,1),up:classifyLiveStage(above,1),watch:classifyLiveStage(far,1)",
+            "}));",
+        ]
+    )
+    completed = subprocess.run(["node", "-e", script], check=True, capture_output=True, text=True)
+    assert json.loads(completed.stdout) == {
+        "belowDistance": "-0.50%",
+        "belowClass": "changeDown",
+        "aboveDistance": "+0.50%",
+        "aboveClass": "changeUp",
+        "down": "PREALERT",
+        "up": "BREAKOUT",
+        "watch": "WATCH",
+    }
+
+
+def test_quality_explanation_is_visible_and_separate_from_breakout():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "Quality란?" in source
+    assert "후보의 거래 용이성과 추세 품질을 비교하는 0~100점 참고 점수" in source
+    assert "PREALERT/BREAKOUT의 20일 돌파가는 바꾸지 않습니다" in source
 
 
 def test_prealert_table_is_rendered_before_breakout_table():
