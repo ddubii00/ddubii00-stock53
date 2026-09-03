@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.full_scan import FullScanConfig, scan_full_market
-from app.providers import DemoMarketDataProvider
+from app.providers import DemoMarketDataProvider, Quote
 from app.universe import NaverUniverseProvider, UniverseMember
 
 
@@ -158,6 +158,24 @@ class CountingDemo(DemoMarketDataProvider):
         return super().get_daily_ohlcv(symbol, count)
 
 
+class NoInvestorFlowDemo(CountingDemo):
+    def get_investor_flow(self, symbol):
+        raise RuntimeError("investor data is not finalized")
+
+
+class IntradayNearButCurrentDistantDemo(CountingDemo):
+    def get_current_price(self, symbol):
+        bars = self.get_daily_ohlcv(symbol, 260)
+        target = max(bar.high for bar in bars[-20:])
+        return Quote(
+            symbol=symbol,
+            price=target * (1 - 0.0647),
+            volume=1_100_000,
+            source=self.name,
+            day_high=target * 0.995,
+        )
+
+
 def test_full_scan_filters_fundamentals_before_fetching_price_history(monkeypatch, tmp_path):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "scan.db"))
     provider = CountingDemo()
@@ -179,6 +197,24 @@ def test_full_scan_filters_fundamentals_before_fetching_price_history(monkeypatc
     assert all(item["operating_profit_100m"] >= 50 for item in items)
 
 
+def test_full_scan_prealert_range_uses_current_price_not_intraday_high(monkeypatch, tmp_path):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "strict-prealert.db"))
+    items, _ = scan_full_market(
+        FullScanConfig(
+            provider="demo",
+            market="KOSPI",
+            min_market_cap_100m=500,
+            min_operating_profit_100m=50,
+            signal_mode="prealert",
+            prealert_pct=1.5,
+            avg_value10_filter_enabled=False,
+        ),
+        market_provider=IntradayNearButCurrentDistantDemo(),
+        universe_provider=FilterUniverse(),
+    )
+    assert items == []
+
+
 def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "filter-scan.db"))
     provider = CountingDemo()
@@ -198,6 +234,10 @@ def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):
     assert [item["symbol"] for item in items] == ["000660"]
     assert items[0]["stage"] == "BREAKOUT"
     assert items[0]["avg_value10"] >= 500 * 100_000_000
+    assert items[0]["investor_date"]
+    assert items[0]["foreign_net_buy_100m"] is not None
+    assert items[0]["institution_net_buy_100m"] is not None
+    assert items[0]["investor_availability"] == "post_close"
 
     no_large_move, _ = scan_full_market(
         FullScanConfig(**base, today_change_filter_enabled=True, min_today_change_pct=5),
@@ -228,6 +268,28 @@ def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):
         universe_provider=FilterUniverse(),
     )
     assert [item["symbol"] for item in value_filter_disabled] == ["000660"]
+
+
+def test_full_scan_keeps_candidate_when_optional_investor_display_is_unavailable(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "investor-unavailable.db"))
+    items, _ = scan_full_market(
+        FullScanConfig(
+            provider="demo",
+            market="KOSPI",
+            min_market_cap_100m=500,
+            min_operating_profit_100m=50,
+            signal_mode="breakout",
+            investor_filter_enabled=False,
+        ),
+        market_provider=NoInvestorFlowDemo(),
+        universe_provider=FilterUniverse(),
+    )
+
+    assert [item["symbol"] for item in items] == ["000660"]
+    assert items[0]["foreign_net_buy_100m"] is None
+    assert "not finalized" in items[0]["investor_error"]
 
 
 def test_full_scan_etf_bypasses_fundamentals_market_cap_and_investor_filters(monkeypatch, tmp_path):

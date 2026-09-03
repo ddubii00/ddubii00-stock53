@@ -70,6 +70,20 @@ class QuoteSession:
         return JsonResponse({"result": {"areas": [{"datas": [self.row]}]}})
 
 
+class InvestorSession:
+    def get(self, *args, **kwargs):
+        return JsonResponse(
+            [
+                {
+                    "bizdate": "20260902",
+                    "foreignerPureBuyQuant": "-1,000",
+                    "organPureBuyQuant": "+2,000",
+                    "closePrice": "50,000",
+                }
+            ]
+        )
+
+
 def test_naver_quote_prefers_open_nxt_session_price(monkeypatch):
     provider = NaverMarketDataProvider()
     session = QuoteSession(
@@ -116,6 +130,18 @@ def test_naver_quote_uses_regular_price_when_nxt_is_closed(monkeypatch):
     assert quote.volume == 123
     assert quote.day_high == 1_680_000
     assert quote.change_pct == pytest.approx(4.625)
+
+
+def test_naver_investor_flow_exposes_latest_completed_date_and_estimated_amount(monkeypatch):
+    provider = NaverMarketDataProvider()
+    monkeypatch.setattr(provider, "_session", lambda: InvestorSession())
+
+    flow = provider.get_investor_flow("005930")
+
+    assert flow.date == "20260902"
+    assert flow.foreign_net_amount == -50_000_000
+    assert flow.institution_net_amount == 100_000_000
+    assert flow.estimated_amount is True
 
 
 def test_quote_history_scale_mismatch_is_rejected():

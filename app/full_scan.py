@@ -278,12 +278,25 @@ def scan_full_market(
         ):
             return None
         flow = None
-        if config.investor_filter_enabled and member.asset_type != "ETF":
-            flow = data.get_investor_flow(member.symbol)
-            if config.provider != "demo" and flow.source == "demo":
-                raise RuntimeError("demo investor flow is excluded from a real full-market scan")
-            if not _investor_filter_passes(
-                config, flow.foreign_net_amount, flow.institution_net_amount
+        investor_error = None
+        if member.asset_type != "ETF":
+            try:
+                candidate_flow = data.get_investor_flow(member.symbol)
+                if config.provider != "demo" and candidate_flow.source == "demo":
+                    raise RuntimeError(
+                        "demo investor flow is excluded from a real full-market scan"
+                    )
+                flow = candidate_flow
+            except Exception as exc:
+                if config.investor_filter_enabled:
+                    raise
+                investor_error = str(exc)
+            if (
+                flow is not None
+                and config.investor_filter_enabled
+                and not _investor_filter_passes(
+                    config, flow.foreign_net_amount, flow.institution_net_amount
+                )
             ):
                 return None
         item = result.to_dict()
@@ -304,6 +317,8 @@ def scan_full_market(
             institution_net_buy_100m=(flow.institution_net_amount / 100_000_000) if flow else None,
             investor_source=flow.source if flow else None,
             investor_amount_estimated=flow.estimated_amount if flow else None,
+            investor_availability="post_close" if member.asset_type != "ETF" else "not_applicable",
+            investor_error=investor_error,
         )
         return item
 

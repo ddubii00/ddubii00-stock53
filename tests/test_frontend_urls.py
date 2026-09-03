@@ -88,8 +88,10 @@ def test_live_mode_rechecks_only_the_initial_full_market_candidates():
     assert "symbols:batch.map(item=>item.symbol).join(',')" in source
     assert "batchSize=appMode==='vercel'?8:200" in source
     assert "include_filtered:'true'" in source
-    assert "조회 오류 ${errorCount}개(다음 주기 재시도)" in source
+    assert "조회 오류 ${errorCount}개(마지막 값 유지·다음 주기 재시도)" in source
     assert "전체시장·재무 재검색 없음" in source
+    assert "candidateItems=liveSeedItems.filter(item=>item.stage==='PREALERT'||item.stage==='BREAKOUT'||item.stage==='WATCH')" in source
+    assert "범위 이탈 추적 ${watches}개" in source
 
 
 def test_live_button_is_next_to_manual_full_market_scan_button():
@@ -112,10 +114,11 @@ def test_live_stage_and_target_distance_follow_current_price():
             "const below={stage:'BREAKOUT',current:99.5,breakout20:100,yesterday_broke:false};",
             "const above={stage:'PREALERT',current:100.5,breakout20:100,yesterday_broke:false};",
             "const far={stage:'PREALERT',current:98,breakout20:100,yesterday_broke:false};",
+            "const retraced={stage:'PREALERT',current:93.5,today_high:100.1,breakout20:100,yesterday_broke:false};",
             "process.stdout.write(JSON.stringify({",
             "belowDistance:signedPct(targetDistancePct(below)),belowClass:changeClass(targetDistancePct(below)),",
             "aboveDistance:signedPct(targetDistancePct(above)),aboveClass:changeClass(targetDistancePct(above)),",
-            "down:classifyLiveStage(below,1),up:classifyLiveStage(above,1),watch:classifyLiveStage(far,1)",
+            "down:classifyLiveStage(below,1),up:classifyLiveStage(above,1),farBelow:classifyLiveStage(far,1),retraced:classifyLiveStage(retraced,1)",
             "}));",
         ]
     )
@@ -127,8 +130,27 @@ def test_live_stage_and_target_distance_follow_current_price():
         "aboveClass": "changeUp",
         "down": "PREALERT",
         "up": "BREAKOUT",
-        "watch": "WATCH",
+        "farBelow": "WATCH",
+        "retraced": "BREAKOUT",
     }
+
+
+def test_out_of_range_live_candidates_are_separate_from_prealert():
+    source = INDEX.read_text(encoding="utf-8")
+    assert 'id="watchSection"' in source
+    assert 'id="watchBody"' in source
+    assert "prealerts=rows.filter(item=>item.stage==='PREALERT')" in source
+    assert "watches=rows.filter(item=>item.stage==='WATCH')" in source
+    assert "renderGroup('prealertBody',prealerts" in source
+
+
+def test_investor_flow_is_split_and_labeled_with_its_basis_date():
+    source = INDEX.read_text(encoding="utf-8")
+    assert 'data-sort="foreign_net_buy_100m">외인(억)' in source
+    assert 'data-sort="institution_net_buy_100m">기관(억)' in source
+    assert "<th>수급 기준</th>" in source
+    assert "장 종료 후 확정" in source
+    assert "item.investor_date" in source
 
 
 def test_quality_explanation_is_visible_and_separate_from_breakout():

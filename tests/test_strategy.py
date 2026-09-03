@@ -45,7 +45,39 @@ def test_intraday_high_breakout_remains_breakout_after_current_price_retraces():
     )
     assert r.breakout20 == 150
     assert r.stage == "BREAKOUT"
-    assert r.distance_pct < 0
+    assert r.distance_pct == pytest.approx(2 / 3)
+
+
+def test_intraday_high_near_target_does_not_make_distant_current_price_prealert():
+    r = analyze(
+        fresh_bars(),
+        current=140.0,
+        current_volume=1300,
+        min_score=0,
+        prealert_pct=1.5,
+        today_high=149.5,
+    )
+    assert r.breakout20 == 150
+    assert r.distance_pct == pytest.approx(100 * (150 - 140) / 150)
+    assert r.stage == "WATCH"
+
+
+def test_prealert_uses_configured_current_price_range():
+    inside = analyze(fresh_bars(), current=147.75, current_volume=1300, min_score=0, prealert_pct=1.5)
+    outside = analyze(fresh_bars(), current=147.74, current_volume=1300, min_score=0, prealert_pct=1.5)
+    assert inside.distance_pct == pytest.approx(1.5)
+    assert inside.stage == "PREALERT"
+    assert outside.distance_pct > 1.5
+    assert outside.stage == "WATCH"
+
+
+def test_breakout_window_is_exactly_previous_twenty_completed_sessions():
+    b = fresh_bars()
+    b[-20] = Bar(high=160, low=145, close=147, volume=1000, value=20_000_000_000)
+    b[-21] = Bar(high=999, low=145, close=147, volume=1000, value=20_000_000_000)
+    r = analyze(b, current=159.0, current_volume=1300, min_score=0, prealert_pct=1.0)
+    assert r.breakout20 == 160
+    assert r.stage == "PREALERT"
 
 
 def test_quality_does_not_block_turtle_breakout():

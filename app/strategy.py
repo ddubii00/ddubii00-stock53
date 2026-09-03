@@ -113,8 +113,11 @@ def analyze(
     yesterday_broke = bars[-1].high > yesterday_breakout_level
 
     n = atr(bars, 20)
+    # PREALERT is strictly a current-price proximity signal.  Today's high is
+    # considered only for BREAKOUT so a stock that briefly approached the
+    # level and then retreated cannot remain a false PREALERT.
     breakout_observed_price = max(current, today_high or current)
-    distance_pct = (breakout20 - breakout_observed_price) / breakout20 * 100.0
+    distance_pct = (breakout20 - current) / breakout20 * 100.0
     atr_pct = n / current * 100.0
     closes = [b.close for b in bars]
     ma20 = _avg(closes[-20:])
