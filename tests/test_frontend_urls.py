@@ -14,6 +14,7 @@ API_PATHS = [
     "/api/health",
     "/api/candidates?scope=all",
     "/api/quotes?symbols=000660",
+    "/api/investor-flows?symbols=000660",
     "/api/full-market-scans",
     "/api/full-market-scans/7",
     "/api/full-market-scan-once",
@@ -115,10 +116,11 @@ def test_live_stage_and_target_distance_follow_current_price():
             "const above={stage:'PREALERT',current:100.5,breakout20:100,yesterday_broke:false};",
             "const far={stage:'PREALERT',current:98,breakout20:100,yesterday_broke:false};",
             "const retraced={stage:'PREALERT',current:93.5,today_high:100.1,breakout20:100,yesterday_broke:false};",
+            "const retracedNear={stage:'BREAKOUT',current:99.5,today_high:100.1,breakout20:100,yesterday_broke:false};",
             "process.stdout.write(JSON.stringify({",
             "belowDistance:signedPct(targetDistancePct(below)),belowClass:changeClass(targetDistancePct(below)),",
             "aboveDistance:signedPct(targetDistancePct(above)),aboveClass:changeClass(targetDistancePct(above)),",
-            "down:classifyLiveStage(below,1),up:classifyLiveStage(above,1),farBelow:classifyLiveStage(far,1),retraced:classifyLiveStage(retraced,1)",
+            "down:classifyLiveStage(below,1),up:classifyLiveStage(above,1),farBelow:classifyLiveStage(far,1),retraced:classifyLiveStage(retraced,1),retracedNear:classifyLiveStage(retracedNear,1),intradayFlag:applyLiveStage(retracedNear,1).intraday_broke",
             "}));",
         ]
     )
@@ -131,7 +133,9 @@ def test_live_stage_and_target_distance_follow_current_price():
         "down": "PREALERT",
         "up": "BREAKOUT",
         "farBelow": "WATCH",
-        "retraced": "BREAKOUT",
+        "retraced": "WATCH",
+        "retracedNear": "PREALERT",
+        "intradayFlag": True,
     }
 
 
@@ -151,6 +155,24 @@ def test_investor_flow_is_split_and_labeled_with_its_basis_date():
     assert "<th>수급 기준</th>" in source
     assert "장 종료 후 확정" in source
     assert "item.investor_date" in source
+    assert "fetchJson('/api/investor-flows?'" in source
+
+
+def test_candidate_table_shows_atr_and_current_state_badges():
+    source = INDEX.read_text(encoding="utf-8")
+    assert source.count('data-sort="atr20">ATR20(N)') == 3
+    assert "장중 돌파 후 하회" in source
+    assert "접근범위 이탈" in source
+    assert "if(current>=target)return 'BREAKOUT'" in source
+    assert "todayHigh>=target" in source
+
+
+def test_candidate_click_is_kept_in_the_tracking_list_with_market_details():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "showCandidate(item,{persistSelection:true})" in source
+    assert "function persistCandidateSelection(item)" in source
+    assert "function syncTrackedCandidateSnapshots(items)" in source
+    assert "20D 돌파가 ${fmt(item.breakout20||item.entry_price)} · ATR20" in source
 
 
 def test_quality_explanation_is_visible_and_separate_from_breakout():

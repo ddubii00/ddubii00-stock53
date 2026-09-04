@@ -39,6 +39,13 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     assert batch_quotes.status_code == 200
     assert len(batch_quotes.json()["items"]) == 2
     assert all(item["change_pct"] is not None for item in batch_quotes.json()["items"])
+    investor_flows = client.get(
+        "/api/investor-flows", params={"provider": "demo", "symbols": "000660,005930"}
+    )
+    assert investor_flows.status_code == 200
+    assert len(investor_flows.json()["items"]) == 2
+    assert all(item["investor_date"] for item in investor_flows.json()["items"])
+    assert all(item["foreign_net_buy_100m"] is not None for item in investor_flows.json()["items"])
 
 
 def test_oracle_live_candidate_subset_is_not_limited_to_vercel_default(monkeypatch):

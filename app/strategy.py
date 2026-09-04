@@ -41,6 +41,7 @@ class TurtleResult:
     score: int
     hard_pass: bool
     yesterday_broke: bool
+    intraday_broke: bool
     stage: str
     target_buy: float
     add2: float
@@ -113,10 +114,10 @@ def analyze(
     yesterday_broke = bars[-1].high > yesterday_breakout_level
 
     n = atr(bars, 20)
-    # PREALERT is strictly a current-price proximity signal.  Today's high is
-    # considered only for BREAKOUT so a stock that briefly approached the
-    # level and then retreated cannot remain a false PREALERT.
-    breakout_observed_price = max(current, today_high or current)
+    # The visible BREAKOUT state follows the current price.  Keep the intraday
+    # crossing as separate metadata so the UI can explain a pullback without
+    # continuing to label it as an active breakout.
+    intraday_broke = bool(today_high is not None and today_high >= breakout20)
     distance_pct = (breakout20 - current) / breakout20 * 100.0
     atr_pct = n / current * 100.0
     closes = [b.close for b in bars]
@@ -168,7 +169,7 @@ def analyze(
     if yesterday_broke:
         stage = "FILTERED"
         reasons.append("어제 이미 20일 고가 돌파: 신규 Unit #1 제외")
-    elif breakout_observed_price >= breakout20:
+    elif current >= breakout20:
         stage = "BREAKOUT"
     elif 0.0 < distance_pct <= prealert_pct + 1e-9:
         stage = "PREALERT"
@@ -193,6 +194,7 @@ def analyze(
         score=score,
         hard_pass=hard_pass,
         yesterday_broke=yesterday_broke,
+        intraday_broke=intraday_broke,
         stage=stage,
         target_buy=breakout20,
         add2=breakout20 + 0.5 * n,

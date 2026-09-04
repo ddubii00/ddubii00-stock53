@@ -172,7 +172,7 @@ class IntradayNearButCurrentDistantDemo(CountingDemo):
             price=target * (1 - 0.0647),
             volume=1_100_000,
             source=self.name,
-            day_high=target * 0.995,
+            day_high=target * 1.005,
         )
 
 
@@ -197,7 +197,7 @@ def test_full_scan_filters_fundamentals_before_fetching_price_history(monkeypatc
     assert all(item["operating_profit_100m"] >= 50 for item in items)
 
 
-def test_full_scan_prealert_range_uses_current_price_not_intraday_high(monkeypatch, tmp_path):
+def test_full_scan_visible_stage_uses_current_price_not_intraday_high(monkeypatch, tmp_path):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "strict-prealert.db"))
     items, _ = scan_full_market(
         FullScanConfig(
@@ -205,7 +205,7 @@ def test_full_scan_prealert_range_uses_current_price_not_intraday_high(monkeypat
             market="KOSPI",
             min_market_cap_100m=500,
             min_operating_profit_100m=50,
-            signal_mode="prealert",
+            signal_mode="actionable",
             prealert_pct=1.5,
             avg_value10_filter_enabled=False,
         ),

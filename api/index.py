@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SYMBOL_RE = re.compile(r"^[0-9A-Z]{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
-app = FastAPI(title="Turtle Signal Guide", version="0.7.1")
+app = FastAPI(title="Turtle Signal Guide", version="0.8.0")
 
 DEFAULT_SYMBOLS = {
     "000660": "SK하이닉스",
@@ -118,7 +118,7 @@ def health():
     app_mode = os.getenv("APP_MODE", "vercel")
     return {
         "ok": True,
-        "version": "0.7.1",
+        "version": "0.8.0",
         "app_mode": app_mode,
         "provider_mode": mode,
         "provider_chain": getattr(provider, "name", provider.__class__.__name__),
@@ -201,6 +201,45 @@ def quotes(symbols: str, provider: str = "auto"):
             items.append(quote_row.__dict__)
         except Exception as exc:
             items.append({"symbol": raw_symbol, "error": str(exc)})
+    return {
+        "provider": getattr(market_provider, "name", market_provider.__class__.__name__),
+        "items": items,
+    }
+
+
+@app.get("/api/investor-flows")
+def investor_flows(symbols: str, provider: str = "auto"):
+    """Fetch candidate investor amounts independently from a stored scan.
+
+    A scan snapshot can legitimately predate investor-data finalization.  This
+    read-only endpoint lets the browser retry just the displayed candidates
+    without recalculating the full market or changing any position state.
+    """
+
+    selected = list(dict.fromkeys(item.strip() for item in symbols.split(",") if item.strip()))
+    if not selected:
+        return {"provider": provider, "items": []}
+    if len(selected) > 30:
+        raise HTTPException(status_code=422, detail="investor-flows supports at most 30 symbols")
+    market_provider = _provider(provider)
+    items: list[dict] = []
+    for raw_symbol in selected:
+        try:
+            symbol = _valid_symbol(raw_symbol)
+            flow = market_provider.get_investor_flow(symbol)
+            items.append(
+                {
+                    "symbol": symbol,
+                    "investor_date": flow.date,
+                    "foreign_net_buy_100m": flow.foreign_net_amount / 100_000_000,
+                    "institution_net_buy_100m": flow.institution_net_amount / 100_000_000,
+                    "investor_source": flow.source,
+                    "investor_amount_estimated": flow.estimated_amount,
+                    "investor_error": None,
+                }
+            )
+        except Exception as exc:
+            items.append({"symbol": raw_symbol, "investor_error": str(exc)})
     return {
         "provider": getattr(market_provider, "name", market_provider.__class__.__name__),
         "items": items,
