@@ -6,7 +6,7 @@ import time
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -20,13 +20,14 @@ from app.providers import (
 from app.state import build_position_state_store
 from app.store import get_full_market_scan, get_latest_full_market_scan
 from app.strategy import Bar, analyze
+from app.symbols import search_symbols
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SYMBOL_RE = re.compile(r"^[0-9A-Z]{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
-app = FastAPI(title="Turtle Signal Guide", version="0.8.1")
+app = FastAPI(title="Turtle Signal Guide", version="0.9.0")
 
 DEFAULT_SYMBOLS = {
     "000660": "SK하이닉스",
@@ -62,11 +63,12 @@ class GuideIn(BaseModel):
     name: str = ""
     entry_price: float = Field(gt=0)
     n_at_entry: float | None = Field(default=None, gt=0)
-    filled_units: int = Field(default=0, ge=0, le=4)
+    filled_units: int = Field(default=0, ge=0, le=6)
     sizing_mode: str = Field(default="fixed", pattern="^(fixed|risk)$")
     fixed_unit_amount: float = Field(default=10_000_000, ge=0)
     account_equity: float = Field(default=100_000_000, ge=0)
     risk_pct: float = Field(default=0.5, ge=0, le=100)
+    prealert_pct: float = Field(default=1.0, ge=0, le=100)
     previous_stop: float | None = Field(default=None, ge=0)
     exit_strategy: str = Field(default="turtle", pattern="^(turtle|ma_staged)$")
     provider: str = "auto"
@@ -121,7 +123,7 @@ def health():
     app_mode = os.getenv("APP_MODE", "vercel")
     return {
         "ok": True,
-        "version": "0.8.1",
+        "version": "0.9.0",
         "app_mode": app_mode,
         "provider_mode": mode,
         "provider_chain": getattr(provider, "name", provider.__class__.__name__),
@@ -184,6 +186,21 @@ def quote(symbol: str, provider: str = "auto"):
         return snapshot.quote.__dict__
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/api/symbol-search")
+def symbol_search(
+    q: str = Query(min_length=1, max_length=50),
+    provider: str = "auto",
+    limit: int = Query(default=20, ge=1, le=50),
+):
+    """Search KOSPI/KOSDAQ symbols by code or Korean name without placing orders."""
+
+    try:
+        items, source = search_symbols(q, provider, limit)
+        return {"query": q, "source": source, "items": items}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"종목 검색 실패: {exc}") from exc
 
 
 @app.get("/api/quotes")
@@ -432,6 +449,7 @@ def _build_guide(payload: GuideIn) -> dict:
         risk_pct=payload.risk_pct,
         previous_stop=payload.previous_stop,
         exit_strategy=payload.exit_strategy,
+        prealert_pct=payload.prealert_pct,
     )
     response = guide.to_dict()
     response.update(

@@ -26,7 +26,7 @@ Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에�
 
 ### 포지션
 
-Entry 체결가 `E`와 Entry 당시 `ATR20 = N`은 포지션 수명 동안 고정합니다.
+완료 일봉으로 다시 계산하는 **현재 ATR20**은 새 거래일마다 변합니다. 다만 Entry 체결가 `E`와 **Entry 당시 `ATR20 = N`**은 포지션 수명 동안 고정하며, 기존 포지션의 추가매수·2N 보호손절·위험수량에는 이 고정 N을 사용합니다. 화면은 두 값을 따로 표시합니다.
 
 | Unit | 기준가 |
 |---|---:|
@@ -34,6 +34,10 @@ Entry 체결가 `E`와 Entry 당시 `ATR20 = N`은 포지션 수명 동안 고�
 | #2 | `E + 0.5N` |
 | #3 | `E + 1.0N` |
 | #4 | `E + 1.5N` |
+| #5 | `E + 2.0N` · 사용자 확장 |
+| #6 | `E + 2.5N` · 사용자 확장 |
+
+원조 Turtle의 한도는 4 Units입니다. #5·#6은 사용자의 요청에 따른 확장으로 화면에서 별도 색으로 구분합니다.
 
 - fixed: 각 Unit마다 `floor(Unit 목표금액 / 해당 Unit 가격)`을 별도로 계산
 - risk: `floor((account equity × risk %) / (2N))`
@@ -47,7 +51,19 @@ Entry 체결가 `E`와 Entry 당시 `ATR20 = N`은 포지션 수명 동안 고�
 - `ma_staged`: 조기 수익보호용 변형. MA5 이탈 시 50%, MA10 이탈 시 잔여 포지션 정리
 - 어느 모드든 `최근 체결 Unit - 2N` 보호손절과 10D Low 전량청산이 이동평균 기준보다 우선
 
-risk 방식은 개인용 보수적 가이드이며 원조 futures contract sizing 전체를 복제하는 모델이 아닙니다.
+risk 방식은 개인용 보수적 가이드이며 원조 futures contract sizing 전체를 복제하는 모델이 아닙니다. 예를 들어 계좌 150,000, 위험한도 2%, N=700이면 위험예산 3,000, 주당 2N 위험 1,400, 원수량 2.14를 계산하고 소수점 이하를 버려 2주(또는 상품에 맞는 2계약)로 안내합니다.
+
+### 숏 관점
+
+후보 표의 신호는 `롱`으로 표시합니다. 선택 종목 아래에는 정통 Turtle을 상하 대칭한 읽기 전용 하락 관점도 제공합니다.
+
+- 숏 진입 관점: `MIN(Low[D-1] ... Low[D-20])` 현재가 하향 돌파
+- 어제 이미 돌파했다면 오늘 신규 숏 신호에서 제외
+- 피라미딩 관점: 진입가에서 `0.5N`씩 하락할 때 추가
+- 보호손절 관점: 숏 진입가 `+ 2N`
+- 청산 관점: `MAX(High[D-1] ... High[D-10])` 상향 돌파
+
+한국 현물주식의 실제 공매도 가능 여부, 대주 물량·수수료·규제는 판정하지 않으며 숏 주문 기능도 없습니다.
 
 ## Data provider
 
@@ -126,7 +142,8 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - 현재가가 20D 목표가를 넘으면 PREALERT/WATCH → BREAKOUT으로 이동. 다시 목표가 아래로 내려오면 PREALERT 또는 WATCH로 이동하고 장중 돌파 이력은 초록 배지로 표시
 - 후보/시세 간격: `REALTIME_POLL_SECONDS=30`, `QUOTE_POLL_SECONDS=3`. 표시 종목의 현재가·등락률은 최대 30종목씩 나눠 별도 3초 polling으로 갱신하며 중복 fetch는 실행하지 않음
 - 중복 fetch cycle 방지
-- 후보 행 클릭: 상세·Entry/ATR 기본값을 표시하고 브라우저의 `내가 선택한 종목` 목록에 즉시 유지. 목록에는 상태, 현재가, 당일%, 목표거리, 돌파가, ATR20, EXIT, Entry, Unit, STOP을 표시하며 `종목 추가/변경 저장`을 눌러야 Oracle position으로 등록됨. 종목명 클릭 시 `stock.naver.com` 해당 종목을 새 탭으로 엶
+- 후보 행 클릭: 위쪽 후보 상세만 미리보기. 종목명은 `stock.naver.com` 해당 종목을 새 탭으로 열며, 종목 옆 `선택` 버튼을 눌러야 `내가 선택한 종목`과 매매 행동 가이드로 추가됨
+- 선택 종목의 종목명/코드 입력란에서 `삼성` 같은 일부 이름이나 6자리 코드를 입력하면 KIS 공식 종목 마스터를 우선 검색하고, 실패하면 Naver 종목목록으로 대체. 검색 제안을 클릭하면 현재가·ATR을 다시 조회해 가이드에 반영
 - 검색 범위: `KOSPI/KOSDAQ 전체` 또는 `직접 입력 종목`
 - PREALERT와 BREAKOUT은 한 번에 동시 검색하고 PREALERT 표를 위에, BREAKOUT 표를 아래에 분리. 종목명만 표시하고 등락률은 상승 빨간·하락 파랑으로 표시
 - 목표대비 거리는 `(현재가 ÷ 20D 돌파가 - 1) × 100`으로 표시. 목표가 아래는 음수·파란색, 목표가 위는 양수·빨간색
@@ -138,8 +155,10 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - Vercel의 `전체시장 새 검색`: 클릭한 요청 안에서 Naver 전체시장을 수동 1회 계산하고 결과를 브라우저에 보관. background worker나 반복 전체검색은 실행하지 않음
 - 전체검색 중복 실행 방지. Oracle 실시간 검색 후보 상한은 `ORACLE_LIVE_SCAN_MAX_SYMBOLS`(기본 200)로 조정 가능하며 상한을 넘으면 화면에 잘림 여부를 표시
 - Vercel 상태: `localStorage`
-- `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가
-- 추적 종목: 여러 종목 추가·변경·보기, 총 투자한도와 1 Unit(총액÷4) 표시, 매도 완료 후 삭제
+- `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가, 최대 6 Units
+- 추적 종목: 여러 종목 추가·변경·보기, 총 투자한도와 계좌 잔고는 만원 단위 입력, 1 Unit은 총액÷6으로 표시, 위험한도(%) 입력, 매도 완료 후 삭제
+- 현재 전략 행동과 현재 매도 행동 바로 아래에 선택한 종목명·코드를 표시
+- 현재 ATR20은 완료 일봉 기준으로 갱신하되, 진입 후 add/stop/risk 계산은 입력·저장된 Entry 당시 고정 N을 사용
 - 매도 전략: 정통 10D Low 전량청산 또는 MA5 50%/MA10 잔여 분할 가이드
 
 worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지 않습니다.
@@ -153,6 +172,7 @@ worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지
 | GET | `/api/candidates` | watchlist 또는 저장된 전체시장 후보 snapshot |
 | GET | `/api/quotes` | 표시 종목 현재가·당일 등락률 일괄 갱신(최대 30종목) |
 | GET | `/api/investor-flows` | 표시 후보의 외인·기관 순매수액만 읽기 재조회(최대 30종목) |
+| GET | `/api/symbol-search` | KIS 공식 종목 마스터 우선 종목명·코드 자동완성 |
 | POST | `/api/full-market-scan-once` | Vercel용 수동 1회 전체시장 검색 |
 | POST | `/api/full-market-scans` | 로컬/Oracle 전체시장 검색 시작 |
 | GET | `/api/full-market-scans/{id}` | 검색 진행률·결과 |
@@ -242,13 +262,17 @@ DB_PATH=./data/turtle.db
 - yesterday breakout 제외
 - ATR20 / 10D exit
 - 10D 평균거래대금 / BREAKOUT 당일 상승률 / 투자자 수급 선택 필터
-- 0.5N / 1.0N / 1.5N add
+- 0.5N / 1.0N / 1.5N add와 사용자 확장 2.0N / 2.5N
 - fixed / risk quantity
+- 계좌 150,000·2%·N 700의 2.14 → 2 위험수량 절삭 예시
 - Unit별 실제 수량 합
 - common stop ratchet
 - WAIT / ENTRY / ADD / STOP / EXIT
 - 정통 10D Low 매도 / MA5·MA10 분할 매도 / 보호손절 우선순위
 - SQLite signal dedup / 수동 fill 확정
+- 기존 4 Unit SQLite schema의 6 Unit 자동 migration
+- 롱/숏 20일 채널과 숏 10D High 청산 관점
+- KIS 종목 master 파싱과 한글 부분검색
 - provider snapshot 일관성
 - Naver NXT 거래 세션 현재가 선택
 - 오늘 장중 고가 돌파 유지

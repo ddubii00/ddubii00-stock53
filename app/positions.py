@@ -7,15 +7,27 @@ from typing import Sequence
 from app.strategy import Bar, atr
 
 
+ORIGINAL_MAX_UNITS = 4
+MAX_UNITS = 6
+
+
 @dataclass
 class PositionGuide:
     symbol: str
     current: float
     entry_price: float
     n_at_entry: float
+    current_atr: float
     filled_units: int
+    max_units: int
+    original_max_units: int
     sizing_mode: str
+    fixed_unit_amount: float
+    account_equity: float
+    risk_pct: float
     risk_budget: float
+    risk_per_share: float
+    risk_qty_raw: float
     add_levels: list[float]
     unit_quantities: list[int]
     unit_amounts: list[float]
@@ -39,6 +51,14 @@ class PositionGuide:
     action_amount: float
     pnl_pct: float
     reasons: list[str]
+    short_stage: str
+    short_prealert_pct: float
+    short_entry20: float
+    short_distance_pct: float
+    short_yesterday_broke: bool
+    short_stop: float
+    short_exit10: float
+    short_add_levels: list[float]
     # v0.3 compatibility aliases. They now always describe the next Unit.
     unit_qty: int
     unit_amount: float
@@ -92,22 +112,26 @@ def build_position_guide(
     risk_pct: float = 0.5,
     previous_stop: float | None = None,
     exit_strategy: str = "turtle",
+    prealert_pct: float = 1.0,
 ) -> PositionGuide:
     if len(bars) < 21:
         raise ValueError("Need at least 21 completed bars")
     if entry_price <= 0 or current <= 0:
         raise ValueError("entry_price and current must be positive")
-    if not 0 <= filled_units <= 4:
-        raise ValueError("filled_units must be 0..4")
+    if not 0 <= filled_units <= MAX_UNITS:
+        raise ValueError(f"filled_units must be 0..{MAX_UNITS}")
+    if prealert_pct < 0:
+        raise ValueError("prealert_pct cannot be negative")
     exit_mode = exit_strategy.strip().lower()
     if exit_mode not in {"turtle", "ma_staged"}:
         raise ValueError("exit_strategy must be turtle or ma_staged")
 
-    n = float(n_at_entry or atr(bars, 20))
+    current_atr = atr(bars, 20)
+    n = float(n_at_entry or current_atr)
     if n <= 0:
         raise ValueError("n_at_entry must be positive")
 
-    add_levels = [entry_price + offset * n for offset in (0.0, 0.5, 1.0, 1.5)]
+    add_levels = [entry_price + offset * n for offset in (0.0, 0.5, 1.0, 1.5, 2.0, 2.5)]
     unit_quantities: list[int] = []
     unit_amounts: list[float] = []
     risk_budget = account_equity * risk_pct / 100.0
@@ -123,9 +147,9 @@ def build_position_guide(
         unit_quantities.append(qty)
         unit_amounts.append(amount)
 
-    next_add_price = add_levels[filled_units] if filled_units < 4 else None
-    next_unit_qty = unit_quantities[filled_units] if filled_units < 4 else 0
-    next_unit_amount = unit_amounts[filled_units] if filled_units < 4 else 0.0
+    next_add_price = add_levels[filled_units] if filled_units < MAX_UNITS else None
+    next_unit_qty = unit_quantities[filled_units] if filled_units < MAX_UNITS else 0
+    next_unit_amount = unit_amounts[filled_units] if filled_units < MAX_UNITS else 0.0
     total_qty = sum(unit_quantities[:filled_units])
     total_cost = sum(unit_amounts[:filled_units])
 
@@ -135,6 +159,26 @@ def build_position_guide(
     exit10 = min(b.low for b in bars[-10:])
     ma5 = sum(b.close for b in bars[-5:]) / 5.0
     ma10 = sum(b.close for b in bars[-10:]) / 10.0
+    risk_per_share = 2.0 * n
+    risk_qty_raw = risk_budget / risk_per_share if risk_per_share > 0 else 0.0
+
+    short_entry20 = min(b.low for b in bars[-20:])
+    short_yesterday_level = min(b.low for b in bars[-21:-1])
+    short_yesterday_broke = bars[-1].low < short_yesterday_level
+    short_distance_pct = (current / short_entry20 - 1.0) * 100.0
+    if short_yesterday_broke:
+        short_stage = "SHORT_FILTERED"
+    elif current <= short_entry20:
+        short_stage = "SHORT_NOW"
+    elif short_distance_pct <= prealert_pct + 1e-9:
+        short_stage = "SHORT_PREALERT"
+    else:
+        short_stage = "SHORT_WAIT"
+    short_stop = short_entry20 + 2.0 * current_atr
+    short_exit10 = max(b.high for b in bars[-10:])
+    short_add_levels = [
+        short_entry20 - offset * current_atr for offset in (0.0, 0.5, 1.0, 1.5, 2.0, 2.5)
+    ]
 
     reasons: list[str] = []
     action = "HOLD"
@@ -216,9 +260,17 @@ def build_position_guide(
         current=current,
         entry_price=entry_price,
         n_at_entry=n,
+        current_atr=current_atr,
         filled_units=filled_units,
+        max_units=MAX_UNITS,
+        original_max_units=ORIGINAL_MAX_UNITS,
         sizing_mode=sizing_mode,
+        fixed_unit_amount=fixed_unit_amount,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
         risk_budget=risk_budget,
+        risk_per_share=risk_per_share,
+        risk_qty_raw=risk_qty_raw,
         add_levels=add_levels,
         unit_quantities=unit_quantities,
         unit_amounts=unit_amounts,
@@ -242,6 +294,14 @@ def build_position_guide(
         action_amount=action_amount,
         pnl_pct=pnl_pct,
         reasons=reasons,
+        short_stage=short_stage,
+        short_prealert_pct=prealert_pct,
+        short_entry20=short_entry20,
+        short_distance_pct=short_distance_pct,
+        short_yesterday_broke=short_yesterday_broke,
+        short_stop=short_stop,
+        short_exit10=short_exit10,
+        short_add_levels=short_add_levels,
         unit_qty=next_unit_qty,
         unit_amount=next_unit_amount,
     )

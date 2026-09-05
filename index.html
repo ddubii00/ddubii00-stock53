@@ -10,6 +10,7 @@
 .signalButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}.signalButton{border:1px solid var(--line);background:#0e151d;color:var(--muted);border-radius:9px;padding:9px;font-weight:850}.signalButton[data-signal="prealert"]{color:var(--yellow);border-color:#a88412;background:#3d3308}.signalButton[data-signal="breakout"]{color:var(--green);border-color:#16823d;background:#0d3b20}.filterLabel{font-size:12px;color:var(--muted);margin:14px 0 8px}.filterList{display:flex;gap:8px;flex-wrap:wrap}.filterChip{display:flex;align-items:center;gap:7px;padding:7px 8px 7px 11px;border:1px solid #38506a;border-radius:12px;background:#111d29;font-size:12px}.filterChip input{width:92px;padding:7px}.filterChip select{width:auto;padding:7px}.filterX{border:0;background:transparent;color:#a9bbcc;font-size:20px;line-height:1;cursor:pointer;padding:0 3px}.addFilter{padding:7px 10px;font-size:12px}.sortButton{border:0;background:transparent;color:inherit;font:inherit;font-weight:800;cursor:pointer;padding:0;white-space:nowrap}.sortButton:hover{color:var(--blue)}.sortButton.active{color:var(--blue)}.sellRule{line-height:1.65}.sellAction{font-size:24px;font-weight:900;margin:6px 0}.changeUp{color:#ff5b5b;font-weight:850}.changeDown{color:#4c8dff;font-weight:850}.changeFlat{color:var(--muted);font-weight:800}
 .stockLink{color:#7dd3fc;text-decoration:none;font-weight:800}.stockLink:hover{text-decoration:underline}.stockLink::after{content:' ↗';font-size:10px;color:var(--muted)}
 .checkOption{display:flex!important;align-items:center;gap:8px;color:var(--text)!important;font-size:14px!important;padding:9px 0;cursor:pointer}.checkOption input{appearance:auto!important;width:18px!important;height:18px;margin:0;accent-color:var(--green);cursor:pointer}.signalSection{margin-top:18px}.signalSectionTitle{display:flex;align-items:center;gap:9px;margin:0 0 8px;font-size:17px}.countBadge{border:1px solid var(--line);border-radius:99px;padding:3px 8px;color:var(--muted);font-size:12px}.stateBadge{display:inline-block;margin-left:6px;padding:3px 7px;border:1px solid;border-radius:999px;font-size:10px;font-weight:850;vertical-align:middle}.stateBadge.intraday{color:#86efac;background:#123b25;border-color:#22c55e}.stateBadge.outRange{color:#e9d5ff;background:#35204c;border-color:#a855f7}.trackedList{display:grid;gap:8px;margin-top:12px}.trackedItem{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel2)}.trackedItem .trackedInfo{flex:1;min-width:230px}.trackedItemName{font-weight:850}.trackedItemDetail{margin-top:4px;line-height:1.55}.readonlyValue{opacity:.85}
+.longBadge{display:inline-block;margin-right:6px;padding:3px 7px;border-radius:999px;background:#123b25;border:1px solid #22c55e;color:#86efac;font-size:10px;font-weight:900}.selectCandidate{margin-left:7px;padding:4px 7px;font-size:11px}.unitExtended{border-color:#7c3aed;background:#211536}.unitExtended .kv span{color:#d8b4fe}.symbolSearchWrap{position:relative}.symbolSuggestions{position:absolute;z-index:30;top:100%;left:0;right:0;max-height:260px;overflow:auto;background:#111821;border:1px solid #38506a;border-radius:10px;box-shadow:0 14px 30px rgba(0,0,0,.4)}.symbolSuggestion{display:flex;width:100%;justify-content:space-between;gap:12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text);padding:10px;text-align:left;cursor:pointer}.symbolSuggestion:hover{background:#1a2734}.symbolSuggestion:last-child{border-bottom:0}.actionInstrument{margin-top:3px;color:#c7d2fe;font-weight:800}.shortGuide{border-color:#a855f7}.shortGuide .actionTitle{color:#e9d5ff}
 </style>
 </head>
 <body>
@@ -101,19 +102,19 @@
   </section>
   <div id="reasons" class="notice" style="margin-top:12px">-</div>
 
-  <h2 class="section">내가 선택한 종목 · 매매 행동 가이드 <span id="gTrackingName" class="muted tiny">종목 미선택</span></h2>
+  <h2 id="trackingTitle" class="section">내가 선택한 종목 · 매매 행동 가이드 <span id="gTrackingName" class="muted tiny">종목 미선택</span></h2>
   <section id="trackingCard" class="card">
     <div class="formGrid">
-      <div class="field"><label for="gSymbol">선택 종목코드</label><input id="gSymbol" value="000660"></div>
+      <div class="field symbolSearchWrap"><label for="gSymbol">종목명/코드 직접 검색</label><input id="gSymbol" value="" autocomplete="off" placeholder="예: 삼성 또는 005930"><div id="symbolSuggestions" class="symbolSuggestions" hidden></div></div>
       <div class="field"><label for="gEntry">최초 Entry 체결가</label><input id="gEntry" type="number" value="0"></div>
       <div class="field"><label for="gAtr">Entry 당시 ATR20(N)</label><input id="gAtr" type="number" value="0"></div>
-      <div class="field"><label for="gUnits">현재 체결된 Unit</label><select id="gUnits"><option value="0" selected>0 · 아직 미진입</option><option value="1">1 Unit</option><option value="2">2 Units</option><option value="3">3 Units</option><option value="4">4 Units</option></select></div>
+      <div class="field"><label for="gUnits">현재 체결된 Unit</label><select id="gUnits"><option value="0" selected>0 · 아직 미진입</option><option value="1">1 Unit</option><option value="2">2 Units</option><option value="3">3 Units</option><option value="4">4 Units · 원조 한도</option><option value="5">5 Units · 확장</option><option value="6">6 Units · 확장 한도</option></select></div>
       <div class="field"><label for="exitStrategy">매도 전략</label><select id="exitStrategy"><option value="turtle">정통 Turtle · 10D Low 전량</option><option value="ma_staged">분할 · MA5 50% / MA10 잔여</option></select></div>
       <div class="field"><label for="sizingMode">Sizing mode</label><select id="sizingMode"><option value="fixed">fixed · Unit 목표금액</option><option value="risk">risk · 계좌 위험한도</option></select></div>
-      <div class="field fixedField"><label for="totalInvestment">총 투자 한도 (4 Units, 원)</label><input id="totalInvestment" type="number" value="40000000" step="1000000"></div>
-      <div class="field fixedField"><label for="unitAmount">1 Unit 목표금액 (총액÷4)</label><input id="unitAmount" class="readonlyValue" type="number" value="10000000" readonly></div>
-      <div class="field riskField" hidden><label for="accountEquity">Account equity(원)</label><input id="accountEquity" type="number" value="100000000" step="1000000"></div>
-      <div class="field riskField" hidden><label for="riskPct">Risk %</label><input id="riskPct" type="number" value="0.5" step="0.1"></div>
+      <div class="field"><label for="totalInvestment">총 투자 한도 (만원 · 6 Units)</label><input id="totalInvestment" type="number" value="6000" step="100"></div>
+      <div class="field"><label for="unitAmount">1 Unit 목표금액 (만원 · 총액÷6)</label><input id="unitAmount" class="readonlyValue" type="number" value="1000" readonly></div>
+      <div class="field"><label for="accountEquity">계좌 잔고 (만원)</label><input id="accountEquity" type="number" value="10000" step="100"></div>
+      <div class="field"><label for="riskPct">위험한도 (%)</label><input id="riskPct" type="number" value="0.5" step="0.1"></div>
     </div>
     <div class="buttons" style="margin-top:12px">
       <button id="guideBtn" class="button primary" type="button">매매 가이드 계산</button>
@@ -126,19 +127,30 @@
   </section>
 
   <section class="grid" style="margin-top:12px">
-    <div class="actionBox"><div class="muted">현재 전략 행동</div><div id="gAction" class="actionTitle">-</div><div id="gReason" class="muted" style="margin-top:8px">-</div></div>
-    <div class="card"><div class="kv"><span>현재가</span><b id="gCurrent">-</b></div><div class="kv"><span>다음 Unit 매수가</span><b id="gNextAdd">-</b></div><div class="kv"><span>공통 STOP</span><b id="gCommonStop" class="red">-</b></div><div class="kv"><span>10D EXIT</span><b id="gExit">-</b></div></div>
-    <div class="card"><div class="kv"><span>다음 Unit 수량</span><b id="gUnitQty">-</b></div><div class="kv"><span>예상 매수금액</span><b id="gUnitAmount">-</b></div><div class="kv"><span>현재 총수량</span><b id="gTotalQty">-</b></div><div class="kv"><span>Risk budget</span><b id="gRiskBudget">-</b></div></div>
-    <div class="card"><div class="kv"><span>Unit #1</span><b id="u1">-</b></div><div class="kv"><span>Unit #2</span><b id="u2">-</b></div><div class="kv"><span>Unit #3</span><b id="u3">-</b></div><div class="kv"><span>Unit #4</span><b id="u4">-</b></div></div>
+    <div class="actionBox"><div class="muted">현재 전략 행동</div><div id="gAction" class="actionTitle">-</div><div id="gActionName" class="actionInstrument">종목 미선택</div><div id="gReason" class="muted" style="margin-top:8px">-</div></div>
+    <div class="card"><div class="kv"><span>현재가</span><b id="gCurrent">-</b></div><div class="kv"><span>현재 ATR20</span><b id="gCurrentAtr">-</b></div><div class="kv"><span>진입 당시 고정 N</span><b id="gFixedAtr">-</b></div><div class="kv"><span>다음 Unit 매수가</span><b id="gNextAdd">-</b></div><div class="kv"><span>공통 STOP</span><b id="gCommonStop" class="red">-</b></div><div class="kv"><span>10D EXIT</span><b id="gExit">-</b></div></div>
+    <div class="card"><div class="kv"><span>다음 Unit 수량</span><b id="gUnitQty">-</b></div><div class="kv"><span>예상 매수금액</span><b id="gUnitAmount">-</b></div><div class="kv"><span>현재 총수량</span><b id="gTotalQty">-</b></div><div class="kv"><span>현재 투입액</span><b id="gTotalCost">-</b></div><div class="kv"><span>Risk budget</span><b id="gRiskBudget">-</b></div></div>
+    <div class="card"><div class="kv"><span>Unit #1</span><b id="u1">-</b></div><div class="kv"><span>Unit #2</span><b id="u2">-</b></div><div class="kv"><span>Unit #3</span><b id="u3">-</b></div><div class="kv"><span>Unit #4 · 원조 한도</span><b id="u4">-</b></div></div>
+    <div class="card unitExtended"><div class="kv"><span>Unit #5 · 사용자 확장</span><b id="u5">-</b></div><div class="kv"><span>Unit #6 · 사용자 확장</span><b id="u6">-</b></div></div>
   </section>
+  <div id="gRiskFormula" class="notice" style="margin-top:12px">위험수량: 계좌 잔고 × 위험한도 ÷ (2 × 진입 당시 N), 소수점 이하는 절삭합니다.</div>
 
   <h2 class="section">매도 시점 · 손절 가이드</h2>
   <div class="notice"><b>보호손절이 항상 우선입니다.</b> 정통 전략은 고정 익절 없이 직전 10거래일 Low 이탈 시 전량청산합니다. 분할 전략은 원조 Turtle이 아닌 변형이며 MA5 이탈 시 50%, MA10 이탈 시 남은 수량 정리를 안내합니다. 실제 매도 주문은 전송하지 않습니다.</div>
   <section class="grid">
-    <div class="actionBox"><div class="muted">현재 매도 행동</div><div id="sSellAction" class="sellAction">-</div><div id="sSellPct" class="signal">-</div><div id="sSellReason" class="muted" style="margin-top:8px">-</div></div>
+    <div class="actionBox"><div class="muted">현재 매도 행동</div><div id="sSellAction" class="sellAction">-</div><div id="sActionName" class="actionInstrument">종목 미선택</div><div id="sSellPct" class="signal">-</div><div id="sSellReason" class="muted" style="margin-top:8px">-</div></div>
     <div class="card"><div class="kv"><span>현재가</span><b id="sCurrent">-</b></div><div class="kv"><span>공통 보호손절</span><b id="sStop" class="red">-</b></div><div class="kv"><span>10D Low 전량청산</span><b id="sExit10">-</b></div><div class="kv"><span>현재 선택 전략</span><b id="sStrategy">-</b></div></div>
     <div class="card"><div class="kv"><span>MA5 · 1차 50%</span><b id="sMa5">-</b></div><div class="kv"><span>MA10 · 잔여 정리</span><b id="sMa10">-</b></div><div class="muted tiny sellRule">종가 이동평균선은 조기 수익보호용 변형 기준입니다. 10D Low와 2N 보호손절은 계속 추적합니다.</div></div>
     <div class="card sellRule"><b>판정 우선순위</b><div class="muted" style="margin-top:8px">1. 최근 체결 Unit − 2N 보호손절<br>2. 직전 10거래일 Low 전량청산<br>3. 분할 전략 선택 시 MA10 / MA5<br>4. 그 외 보유</div></div>
+  </section>
+
+  <h2 class="section">숏 관점 · 하락 위험 가이드</h2>
+  <div class="notice">정통 Turtle의 대칭 규칙을 참고한 읽기 전용 관점입니다. 직전 20일 Low 하향 돌파를 숏 진입 신호, 10일 High 상향 돌파를 청산 신호로 봅니다. 오늘 가상 진입 기준이라 현재 ATR20을 N으로 사용합니다. 한국 현물주식의 실제 공매도 가능 여부·대주 조건은 반영하지 않으며 주문을 전송하지 않습니다.</div>
+  <section class="grid shortGuide">
+    <div class="actionBox"><div class="muted">현재 숏 관점</div><div id="shortStage" class="actionTitle">-</div><div id="shortName" class="actionInstrument">종목 미선택</div><div id="shortDistance" class="muted" style="margin-top:8px">-</div></div>
+    <div class="card"><div class="kv"><span>20D Low 숏 진입가</span><b id="shortEntry">-</b></div><div class="kv"><span>현재 ATR20</span><b id="shortAtr">-</b></div><div class="kv"><span>보호손절 · 진입가 + 2N</span><b id="shortStop" class="red">-</b></div><div class="kv"><span>10D High 청산</span><b id="shortExit">-</b></div></div>
+    <div class="card"><div class="kv"><span>Short Unit #1</span><b id="su1">-</b></div><div class="kv"><span>Short Unit #2</span><b id="su2">-</b></div><div class="kv"><span>Short Unit #3</span><b id="su3">-</b></div><div class="kv"><span>Short Unit #4</span><b id="su4">-</b></div></div>
+    <div class="card unitExtended"><div class="kv"><span>Short Unit #5 · 확장</span><b id="su5">-</b></div><div class="kv"><span>Short Unit #6 · 확장</span><b id="su6">-</b></div></div>
   </section>
 
   <p class="foot">Risk 방식은 <code>equity × risk% ÷ (2N)</code>의 보수적 개인용 가이드이며, 원조 futures contract sizing 전체를 복제한다고 주장하지 않습니다. 고정 수익목표는 사용하지 않습니다.</p>
@@ -148,9 +160,11 @@ const STORAGE_KEY='turtleTracking.v1',TRACKING_LIST_KEY='turtleTrackingList.v2',
 const fmt=n=>Number.isFinite(Number(n))?Math.round(Number(n)).toLocaleString('ko-KR')+'원':'-';
 const pct=n=>Number.isFinite(Number(n))?Number(n).toFixed(2)+'%':'-';
 const eok=n=>Number.isFinite(Number(n))?(Number(n)/100000000).toFixed(1)+'억':'-';
+const manwon=n=>Number.isFinite(Number(n))?(Number(n)/10000).toLocaleString('ko-KR',{maximumFractionDigits:1})+'만원':'-';
 const num=id=>Number(document.getElementById(id).value||0);
+const wonFromManwon=id=>Math.max(0,num(id))*10000;
 const el=id=>document.getElementById(id);
-let selected=null,lastGuide=null,realtimeTimer=null,quoteTimer=null,cycleBusy=false,quoteBusy=false,investorHydrationBusy=false,fullScanBusy=false,realtimeMs=30000,quoteMs=3000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false,manualFullScanSupported=false,healthLoaded=false,kisConfigured=false,trackingName='',appMode='vercel';
+let selected=null,lastGuide=null,realtimeTimer=null,quoteTimer=null,symbolSearchTimer=null,cycleBusy=false,quoteBusy=false,investorHydrationBusy=false,fullScanBusy=false,realtimeMs=30000,quoteMs=3000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false,manualFullScanSupported=false,healthLoaded=false,kisConfigured=false,trackingName='',appMode='vercel';
 let signalMode='actionable',candidateItems=[],liveSeedItems=[],candidateNote='',sortState={key:'market_cap_100m',direction:'desc'};
 const activeFilters={avgValue10:true,investor:false,todayChange:false};
 
@@ -198,7 +212,36 @@ function applyLiveStage(item,prealertPct){
 }
 function naverStockUrl(symbol){const value=String(symbol||'').trim().toUpperCase();return /^[0-9A-Z]{6}$/.test(value)?`https://stock.naver.com/domestic/stock/${encodeURIComponent(value)}`:''}
 function stockAnchor(item){
-  const anchor=document.createElement('a');anchor.className='stockLink';anchor.textContent=item.name||item.symbol;anchor.href=naverStockUrl(item.symbol);anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.title='Naver 증권에서 검토';anchor.addEventListener('click',event=>{event.stopPropagation();showCandidate(item,{persistSelection:true})});return anchor;
+  const anchor=document.createElement('a');anchor.className='stockLink';anchor.textContent=item.name||item.symbol;anchor.href=naverStockUrl(item.symbol);anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.title='Naver 증권에서 검토';anchor.addEventListener('click',event=>event.stopPropagation());return anchor;
+}
+function shortStageClass(stage){return stage==='SHORT_NOW'?'red':stage==='SHORT_PREALERT'?'yellow':stage==='SHORT_FILTERED'?'muted':'blue'}
+function renderShortGuide(data){
+  const stage=data.short_stage||'SHORT_WAIT',name=data.name||data.symbol||'종목 미선택',entry=Number(data.short_entry20),current=Number(data.current),distance=Number.isFinite(Number(data.short_distance_pct))?Number(data.short_distance_pct):(entry>0&&Number.isFinite(current)?(current/entry-1)*100:NaN),currentAtr=data.current_atr??data.atr20;
+  const range=Number(data.short_prealert_pct??num('prealertPct'));el('shortStage').textContent=stage;el('shortStage').className='actionTitle '+shortStageClass(stage);el('shortName').textContent=name+(data.symbol?' · '+data.symbol:'');el('shortDistance').textContent=stage==='SHORT_FILTERED'?'어제 이미 20D Low를 하향 돌파해 오늘 신규 숏 신호에서는 제외':Number.isFinite(distance)?`현재가는 20D Low 대비 ${signedPct(distance)} · 접근범위 ${plainPct(range)}%`:'-';
+  el('shortEntry').textContent=fmt(entry);el('shortAtr').textContent=fmt(currentAtr);el('shortStop').textContent=fmt(data.short_stop??data.short_initial_stop);el('shortExit').textContent=fmt(data.short_exit10);
+  const levels=data.short_add_levels||[entry,data.short_add2,data.short_add3,data.short_add4,data.short_add5,data.short_add6];for(let i=0;i<6;i++)el('su'+(i+1)).textContent=fmt(levels[i]);
+}
+async function selectCandidate(item,{refresh=true}={}){
+  let chosen=item;el('trackingState').textContent='선택 종목 최신 ATR 조회중 · '+(item.name||item.symbol);
+  if(refresh){try{const params=new URLSearchParams({provider:el('provider').value,scope:'watchlist',symbols:item.symbol,prealert_pct:'100',include_filtered:'true'}),{data}=await fetchJson('/api/candidates?'+params.toString()),fresh=(data.items||[]).find(row=>row.symbol===item.symbol&&row.stage!=='ERROR');if(fresh)chosen={...item,...fresh,name:item.name||fresh.name}}
+  catch(error){el('trackingState').title='최신 재조회 실패, 검색 결과 값 사용: '+error.message}}
+  showCandidate(chosen,{populateTracking:true,persistSelection:true});await calculateGuide(false).catch(error=>{el('trackingState').title='선택 종목 가이드 계산 실패: '+error.message});el('trackingTitle').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderSymbolSuggestions(items){
+  const box=el('symbolSuggestions');box.replaceChildren();if(!items.length){box.hidden=true;return}
+  items.forEach(item=>{const button=document.createElement('button');button.type='button';button.className='symbolSuggestion';const name=document.createElement('b');name.textContent=item.name;const meta=document.createElement('span');meta.className='muted tiny';meta.textContent=`${item.symbol} · ${item.market||'-'} · ${String(item.source||'').toUpperCase()}`;button.append(name,meta);button.addEventListener('click',()=>chooseSymbolSuggestion(item));box.appendChild(button)});box.hidden=false;
+}
+async function searchSymbolInput(){
+  const query=el('gSymbol').value.trim();if(!query){renderSymbolSuggestions([]);return}
+  try{const params=new URLSearchParams({q:query,provider:el('provider').value,limit:'20'}),{data}=await fetchJson('/api/symbol-search?'+params.toString());if(el('gSymbol').value.trim()===query)renderSymbolSuggestions(data.items||[])}catch(error){el('trackingState').textContent='종목명 검색 실패: '+error.message;renderSymbolSuggestions([])}
+}
+async function chooseSymbolSuggestion(item){
+  renderSymbolSuggestions([]);trackingName=item.name||item.symbol;el('gSymbol').value=item.symbol;el('gSymbol').dataset.last=item.symbol;renderTrackingName(item.symbol);el('trackingState').textContent='종목 시세·ATR 조회중 · '+trackingName;
+  try{const params=new URLSearchParams({provider:el('provider').value,scope:'watchlist',symbols:item.symbol,prealert_pct:'100',include_filtered:'true'}),{data}=await fetchJson('/api/candidates?'+params.toString()),snapshot=(data.items||[]).find(row=>row.symbol===item.symbol&&row.stage!=='ERROR');if(!snapshot)throw new Error((data.items||[])[0]?.error||'분석 결과 없음');await selectCandidate({...snapshot,...item,symbol:item.symbol,name:item.name,source:snapshot.source||item.source},{refresh:false})}
+  catch(error){el('trackingState').textContent='종목 선택 실패: '+error.message;alert('종목 선택 실패: '+error.message)}
+}
+function queueSymbolSearch(){
+  if(el('gSymbol').value.trim()!==selected?.symbol)trackingName='';renderTrackingName();if(symbolSearchTimer)clearTimeout(symbolSearchTimer);symbolSearchTimer=setTimeout(searchSymbolInput,250);
 }
 function scanConfig(){
   return {
@@ -242,6 +285,7 @@ function showCandidate(data,{populateTracking=true,persistSelection=false}={}){
   el('qMa').textContent=[data.ma20,data.ma60,data.ma120].map(x=>Number.isFinite(Number(x))?Math.round(Number(x)).toLocaleString('ko-KR'):'-').join(' / ');
   el('qAtr').textContent=pct(data.atr_pct);el('qRs').textContent=pct(Number(data.rs20)*100)+' / '+pct(Number(data.rs60)*100);el('qHigh').textContent=pct(data.high52_distance_pct);
   el('reasons').textContent=(data.reasons||[]).join(' · ')||data.error||'-';
+  renderShortGuide(data);
   if(populateTracking){
     const oldSymbol=el('gSymbol').dataset.last;el('gSymbol').value=data.symbol||'';
     trackingName=data.name||data.symbol||'';renderTrackingName(data.symbol||'');
@@ -300,8 +344,8 @@ function appendCandidateRow(body,item){
       {text:flowAmountText(item,'foreign_net_buy_100m'),cls:changeClass(item.foreign_net_buy_100m)},{text:flowAmountText(item,'institution_net_buy_100m'),cls:changeClass(item.institution_net_buy_100m)},{text:flowBasisText(item)},
       {text:fmt(item.current)},{text:fmt(item.breakout20)},{text:signedPct(targetDistancePct(item)),cls:changeClass(targetDistancePct(item))},{text:fmt(item.atr20)+(Number.isFinite(Number(item.atr_pct))?' · '+pct(item.atr_pct):'')},{text:String(item.score??'-')},{text:marketSourceText(item)}
     ];
-  values.forEach(value=>{const cell=document.createElement('td');cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;if(value.stockLink)cell.appendChild(stockAnchor(item));else if(value.stageItem){const label=document.createElement('span');label.className='stage '+stageClass(item.stage);label.textContent=item.stage;cell.appendChild(label);candidateStatusBadges(item).forEach(badge=>{const node=document.createElement('span');node.className='stateBadge '+badge.cls;node.textContent=badge.text;cell.appendChild(node)})}else cell.textContent=value.text;row.appendChild(cell)});
-  if(item.stage!=='ERROR')row.addEventListener('click',()=>showCandidate(item,{persistSelection:true}));body.appendChild(row);
+  values.forEach(value=>{const cell=document.createElement('td');cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;if(value.stockLink){cell.appendChild(stockAnchor(item));const choose=document.createElement('button');choose.className='button selectCandidate';choose.type='button';choose.textContent='선택';choose.addEventListener('click',event=>{event.stopPropagation();selectCandidate(item)});cell.appendChild(choose)}else if(value.stageItem){const perspective=document.createElement('span');perspective.className='longBadge';perspective.textContent='롱';const label=document.createElement('span');label.className='stage '+stageClass(item.stage);label.textContent=item.stage;cell.append(perspective,label);candidateStatusBadges(item).forEach(badge=>{const node=document.createElement('span');node.className='stateBadge '+badge.cls;node.textContent=badge.text;cell.appendChild(node)})}else cell.textContent=value.text;row.appendChild(cell)});
+  if(item.stage!=='ERROR')row.addEventListener('click',()=>showCandidate(item,{populateTracking:false,persistSelection:false}));body.appendChild(row);
 }
 function sortValue(item,key){
   if(key==='stage')return {BREAKOUT:4,PREALERT:3,WATCH:2,FILTERED:1,ERROR:0}[item.stage]??-1;
@@ -374,7 +418,7 @@ async function loadCandidates(){
     el('scanProgress').textContent=candidateNote+' · 신호가 없으면 표가 비어 있는 것이 정상입니다.';
   }else{candidateItems=received;setLiveSeedItems(received);candidateNote=data.note}
   renderCandidates();await hydrateInvestorFlows();
-  const current=candidateItems.find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||candidateItems.find(item=>item.stage!=='ERROR');if(current)showCandidate(current,{populateTracking:!stored()});
+  const current=candidateItems.find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||candidateItems.find(item=>item.stage!=='ERROR');if(current)showCandidate(current,{populateTracking:false});
 }
 
 function applyFullScanResult(data,{savedAt=null}={}){
@@ -384,7 +428,7 @@ function applyFullScanResult(data,{savedAt=null}={}){
   const saved=savedAt?` · 저장 ${new Date(savedAt).toLocaleString('ko-KR')}`:'';
   el('providerNote').textContent='Provider: '+String(data.provider||'auto').toUpperCase()+' · '+candidateNote;
   el('scanProgress').textContent=`수동 전체검색 · 범위 ${market} ${fullScanCountText(data)} → 후보 ${candidateItems.length.toLocaleString('ko-KR')}개 · 오류 ${Number(data.error_count||0).toLocaleString('ko-KR')}개${duration}${saved}`;
-  const current=candidateItems.find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||candidateItems.find(item=>item.stage!=='ERROR');if(current)showCandidate(current,{populateTracking:!stored()});
+  const current=candidateItems.find(item=>item.stage!=='ERROR'&&item.symbol===selected?.symbol)||candidateItems.find(item=>item.stage!=='ERROR');if(current)showCandidate(current,{populateTracking:false});
 }
 
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -427,26 +471,29 @@ async function startManualFullMarketScan(){
 
 function guidePayload(){
   const saved=stored(),symbol=el('gSymbol').value.trim();
-  return {symbol,name:trackingName,entry_price:num('gEntry'),n_at_entry:num('gAtr')||null,filled_units:Number(el('gUnits').value),sizing_mode:el('sizingMode').value,fixed_unit_amount:num('unitAmount'),total_investment:num('totalInvestment'),account_equity:num('accountEquity'),risk_pct:num('riskPct'),previous_stop:saved&&saved.symbol===symbol?Number(saved.previous_stop||0)||null:null,exit_strategy:el('exitStrategy').value,provider:el('provider').value};
+  return {symbol,name:trackingName,entry_price:num('gEntry'),n_at_entry:num('gAtr')||null,filled_units:Number(el('gUnits').value),sizing_mode:el('sizingMode').value,fixed_unit_amount:wonFromManwon('unitAmount'),total_investment:wonFromManwon('totalInvestment'),account_equity:wonFromManwon('accountEquity'),risk_pct:num('riskPct'),prealert_pct:num('prealertPct'),previous_stop:saved&&saved.symbol===symbol?Number(saved.previous_stop||0)||null:null,exit_strategy:el('exitStrategy').value,provider:el('provider').value};
 }
 async function calculateGuide(showErrors=true){
   const payload=guidePayload();if(!payload.symbol||!payload.entry_price)return null;
   try{const {data}=await fetchJson('/api/guide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});showGuide(data);return data}
   catch(error){if(showErrors)alert('가이드 계산 실패: '+error.message);throw error}
 }
-function unitText(data,index){const levels=data.add_levels||[],qty=data.unit_quantities||[];return levels[index]?fmt(levels[index])+' × '+(qty[index]??0).toLocaleString('ko-KR')+'주':'-'}
+function unitText(data,index){const levels=data.add_levels||[],qty=data.unit_quantities||[],amounts=data.unit_amounts||[];return levels[index]?fmt(levels[index])+' × '+(qty[index]??0).toLocaleString('ko-KR')+'주 · '+manwon(amounts[index]):'-'}
 function showGuide(data){
   lastGuide=data;el('gAction').textContent=data.action||'-';el('gAction').className='actionTitle '+actionClass(data.action);
   if(data.name&&data.name!==data.symbol)trackingName=data.name;renderTrackingName(data.symbol);
+  const actionName=(trackingName||data.name||data.symbol)+' · '+data.symbol;el('gActionName').textContent=actionName;el('sActionName').textContent=actionName;
   const source=data.source?' · '+String(data.source).toUpperCase():'';
-  el('gReason').textContent=(data.reasons||[]).join(' · ');el('gCurrent').textContent=fmt(data.current)+source;el('gNextAdd').textContent=data.next_add_price?fmt(data.next_add_price):'4 Units 완료';
+  el('gReason').textContent=(data.reasons||[]).join(' · ');el('gCurrent').textContent=fmt(data.current)+source;el('gCurrentAtr').textContent=fmt(data.current_atr);el('gFixedAtr').textContent=fmt(data.n_at_entry)+' · 포지션 계산에 고정';el('gNextAdd').textContent=data.next_add_price?fmt(data.next_add_price):'6 Units 완료';
   el('gCommonStop').textContent=fmt(data.common_stop);el('gExit').textContent=fmt(data.exit10);el('gUnitQty').textContent=(data.next_unit_qty??0).toLocaleString('ko-KR')+'주';
-  el('gUnitAmount').textContent=fmt(data.next_unit_amount);el('gTotalQty').textContent=(data.total_qty??0).toLocaleString('ko-KR')+'주';el('gRiskBudget').textContent=fmt(data.risk_budget);
-  for(let i=0;i<4;i++)el('u'+(i+1)).textContent=unitText(data,i);
+  el('gUnitAmount').textContent=manwon(data.next_unit_amount);el('gTotalQty').textContent=(data.total_qty??0).toLocaleString('ko-KR')+'주';el('gTotalCost').textContent=manwon(data.total_cost);el('gRiskBudget').textContent=manwon(data.risk_budget);
+  el('gRiskFormula').textContent=`위험수량 계산: 계좌 ${manwon(data.account_equity)} × ${Number(data.risk_pct||0).toFixed(2)}% = ${manwon(data.risk_budget)} · 주당 2N ${fmt(data.risk_per_share)} · ${Number(data.risk_qty_raw||0).toFixed(2)}주 → ${Math.floor(Number(data.risk_qty_raw||0)).toLocaleString('ko-KR')}주`;
+  for(let i=0;i<6;i++)el('u'+(i+1)).textContent=unitText(data,i);
   el('sSellAction').textContent=data.sell_action||'-';el('sSellAction').className='sellAction '+(data.sell_action==='SELL_WAIT'?'blue':'red');
   el('sSellPct').textContent=Number(data.sell_pct)>0?`${Number(data.sell_pct)}% 매도 가이드 · ${fmt(data.sell_price)}`:'매도 대기';
   el('sSellReason').textContent=(data.sell_reasons||[]).join(' · ');el('sCurrent').textContent=fmt(data.current)+source;el('sStop').textContent=fmt(data.common_stop);el('sExit10').textContent=fmt(data.exit10);
   el('sMa5').textContent=fmt(data.ma5);el('sMa10').textContent=fmt(data.ma10);el('sStrategy').textContent=data.exit_strategy==='ma_staged'?'MA5/MA10 분할':'정통 10D Low';
+  renderShortGuide({...data,name:trackingName||data.name});
   const saved=stored();if(saved&&saved.symbol===data.symbol){saved.previous_stop=Math.max(Number(saved.previous_stop||0),Number(data.common_stop||0));saved.exit_strategy=data.exit_strategy;saved.name=trackingName;saved.sell_action=data.sell_action;saved.sell_price=data.sell_price;saved.common_stop=data.common_stop;saved.exit10=data.exit10;localStorage.setItem(STORAGE_KEY,JSON.stringify(saved));upsertTracked(saved);renderTrackedList();el('trackingState').textContent='추적 저장됨 · '+(trackingName?trackingName+' · ':'')+data.symbol}
 }
 
@@ -505,14 +552,14 @@ function toggleRealtime(){
   if(el('scanScope').value==='all'&&!liveSeedItems.length){el('scanProgress').textContent='실시간으로 추적할 종목이 없습니다. 먼저 “전체시장 새 검색”을 실행하세요.';return}
   el('liveBtn').classList.add('active');el('liveBtn').textContent='● 실시간 검색중';el('scanState').textContent='검색중';realtimeCandidateCycle();realtimeTimer=setInterval(realtimeCandidateCycle,realtimeMs);refreshLiveQuotes();quoteTimer=setInterval(refreshLiveQuotes,quoteMs);
 }
-function updateSizingVisibility(){const risk=el('sizingMode').value==='risk';document.querySelectorAll('.fixedField').forEach(node=>node.hidden=risk);document.querySelectorAll('.riskField').forEach(node=>node.hidden=!risk)}
-function syncUnitAmount(){el('unitAmount').value=Math.max(0,Math.floor(num('totalInvestment')/4))}
+function updateSizingVisibility(){el('gRiskFormula').dataset.mode=el('sizingMode').value}
+function syncUnitAmount(){el('unitAmount').value=Math.max(0,Math.floor(num('totalInvestment')/6))}
 function candidateSnapshot(item){
-  const keys=['symbol','name','stage','current','today_high','today_change_pct','breakout20','distance_pct','atr20','atr_pct','intraday_broke','exit10','initial_stop','foreign_net_buy_100m','institution_net_buy_100m','investor_date','investor_source','investor_amount_estimated','investor_error','source'],snapshot={};keys.forEach(key=>{if(item?.[key]!==undefined)snapshot[key]=item[key]});return snapshot;
+  const keys=['symbol','name','stage','current','today_high','today_change_pct','breakout20','distance_pct','atr20','atr_pct','intraday_broke','exit10','initial_stop','short_stage','short_entry20','short_distance_pct','short_initial_stop','short_exit10','short_add2','short_add3','short_add4','short_add5','short_add6','foreign_net_buy_100m','institution_net_buy_100m','investor_date','investor_source','investor_amount_estimated','investor_error','source'],snapshot={};keys.forEach(key=>{if(item?.[key]!==undefined)snapshot[key]=item[key]});return snapshot;
 }
 function persistCandidateSelection(item){
   if(!item?.symbol||item.stage==='ERROR')return;
-  const existing=trackedItems().find(row=>row.symbol===item.symbol),snapshot=candidateSnapshot(item),payload=existing?{...existing,...snapshot}:{...snapshot,entry_price:Number(item.breakout20)||0,n_at_entry:Number(item.atr20)||0,filled_units:0,exit_strategy:el('exitStrategy').value,sizing_mode:el('sizingMode').value,fixed_unit_amount:num('unitAmount'),total_investment:num('totalInvestment'),account_equity:num('accountEquity'),risk_pct:num('riskPct'),previous_stop:null,provider:el('provider').value,watch_only:true};
+  const existing=trackedItems().find(row=>row.symbol===item.symbol),snapshot=candidateSnapshot(item),payload=existing?{...existing,...snapshot}:{...snapshot,entry_price:Number(item.breakout20)||0,n_at_entry:Number(item.atr20)||0,filled_units:0,exit_strategy:el('exitStrategy').value,sizing_mode:el('sizingMode').value,fixed_unit_amount:wonFromManwon('unitAmount'),total_investment:wonFromManwon('totalInvestment'),account_equity:wonFromManwon('accountEquity'),risk_pct:num('riskPct'),previous_stop:null,provider:el('provider').value,watch_only:true};
   localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));upsertTracked(payload);renderTrackedList();el('trackingState').textContent=(payload.watch_only?'후보 선택 유지됨 · 저장 버튼으로 Oracle 등록 · ':'추적 선택됨 · ')+(payload.name||payload.symbol);el('trackingCard').classList.add('tracked');
 }
 function syncTrackedCandidateSnapshots(items){
@@ -520,7 +567,7 @@ function syncTrackedCandidateSnapshots(items){
   let changed=false;const merged=savedItems.map(item=>{const snapshot=snapshots.get(item.symbol);if(!snapshot)return item;changed=true;return {...item,...snapshot}});if(!changed)return;saveTrackedItems(merged);const active=stored();if(active&&snapshots.has(active.symbol))localStorage.setItem(STORAGE_KEY,JSON.stringify({...active,...snapshots.get(active.symbol)}));renderTrackedList();
 }
 function loadTracking(payload,{calculate=true}={}){
-  trackingName=payload.name||'';el('gSymbol').value=payload.symbol||'';el('gSymbol').dataset.last=payload.symbol||'';renderTrackingName(payload.symbol||'');el('gEntry').value=payload.entry_price||0;el('gAtr').value=payload.n_at_entry||0;el('gUnits').value=String(payload.filled_units??0);el('exitStrategy').value=payload.exit_strategy||'turtle';el('sizingMode').value=payload.sizing_mode||'fixed';el('unitAmount').value=payload.fixed_unit_amount||10000000;el('totalInvestment').value=payload.total_investment||Number(payload.fixed_unit_amount||10000000)*4;el('accountEquity').value=payload.account_equity||100000000;el('riskPct').value=payload.risk_pct??0.5;localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));el('trackingState').textContent='선택됨 · '+(trackingName?trackingName+' · ':'')+payload.symbol;el('trackingCard').classList.add('tracked');updateSizingVisibility();renderTrackedList();if(calculate)calculateGuide(false).catch(()=>{});
+  trackingName=payload.name||'';el('gSymbol').value=payload.symbol||'';el('gSymbol').dataset.last=payload.symbol||'';renderTrackingName(payload.symbol||'');el('gEntry').value=payload.entry_price||0;el('gAtr').value=payload.n_at_entry||0;el('gUnits').value=String(Math.min(6,Number(payload.filled_units??0)));el('exitStrategy').value=payload.exit_strategy||'turtle';el('sizingMode').value=payload.sizing_mode||'fixed';el('unitAmount').value=Number(payload.fixed_unit_amount||10000000)/10000;el('totalInvestment').value=Number(payload.total_investment||Number(payload.fixed_unit_amount||10000000)*6)/10000;el('accountEquity').value=Number(payload.account_equity||100000000)/10000;el('riskPct').value=payload.risk_pct??0.5;localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));el('trackingState').textContent='선택됨 · '+(trackingName?trackingName+' · ':'')+payload.symbol;el('trackingCard').classList.add('tracked');updateSizingVisibility();renderTrackedList();if(calculate)calculateGuide(false).catch(()=>{});
 }
 function renderTrackedList(){
   const box=el('trackedList'),items=trackedItems();box.replaceChildren();if(!items.length){const empty=document.createElement('div');empty.className='muted tiny';empty.textContent='추가한 추적 종목이 없습니다.';box.appendChild(empty);return}
@@ -538,7 +585,7 @@ async function clearTracking(symbol=el('gSymbol').value.trim()){
   const remaining=trackedItems().filter(item=>item.symbol!==symbol);saveTrackedItems(remaining);const current=stored();if(current?.symbol===symbol)localStorage.removeItem(STORAGE_KEY);lastGuide=null;if(remaining.length)loadTracking(remaining[0]);else{trackingName='';el('gSymbol').value='';el('gEntry').value=0;el('gAtr').value=0;el('gUnits').value='0';renderTrackingName();el('trackingState').textContent='저장된 추적 종목 없음';el('trackingCard').classList.remove('tracked');renderTrackedList()}
 }
 async function confirmFill(){
-  const units=Number(el('gUnits').value);if(units>=4){alert('이미 4 Units가 모두 확정되었습니다.');return}
+  const units=Number(el('gUnits').value);if(units>=6){alert('이미 6 Units가 모두 확정되었습니다.');return}
   const label=units===0?'Unit #1 진입':'Unit #'+(units+1)+' 추매';if(!confirm(label+' 체결을 실제로 완료했습니까? 이 확인 전에는 Unit 수가 자동 증가하지 않습니다.'))return;
   el('gUnits').value=String(units+1);await saveTracking();await calculateGuide(true);
 }
@@ -546,7 +593,7 @@ function restoreTracking(){
   const payload=stored()||trackedItems()[0];renderTrackedList();if(!payload)return false;const demoMigrated=payload.provider==='demo';if(demoMigrated)payload.provider='auto';loadTracking(payload);if(demoMigrated)el('trackingState').textContent='실제 시세로 전환됨 · Entry/ATR 확인 필요 · '+payload.symbol;return true;
 }
 async function loadOraclePositions(){
-  if(!fullScanSupported)return;try{const {data}=await fetchJson('/api/positions'),local=trackedItems();if(data.persistent&&Array.isArray(data.items)){const localBySymbol=new Map(local.map(item=>[item.symbol,item])),serverItems=data.items.map(item=>({...localBySymbol.get(item.symbol),...item,name:item.name||localBySymbol.get(item.symbol)?.name||item.symbol,total_investment:Number(item.fixed_unit_amount||10000000)*4,previous_stop:item.common_stop,watch_only:false})),serverSymbols=new Set(serverItems.map(item=>item.symbol)),items=[...serverItems,...local.filter(item=>!serverSymbols.has(item.symbol))];saveTrackedItems(items);renderTrackedList();if(items.length&&!stored())loadTracking(items[0])}}catch(error){el('trackingState').title='Oracle 추적 목록 조회 실패: '+error.message}
+  if(!fullScanSupported)return;try{const {data}=await fetchJson('/api/positions'),local=trackedItems();if(data.persistent&&Array.isArray(data.items)){const localBySymbol=new Map(local.map(item=>[item.symbol,item])),serverItems=data.items.map(item=>({...localBySymbol.get(item.symbol),...item,name:item.name||localBySymbol.get(item.symbol)?.name||item.symbol,total_investment:Number(item.fixed_unit_amount||10000000)*6,previous_stop:item.common_stop,watch_only:false})),serverSymbols=new Set(serverItems.map(item=>item.symbol)),items=[...serverItems,...local.filter(item=>!serverSymbols.has(item.symbol))];saveTrackedItems(items);renderTrackedList();if(items.length&&!stored())loadTracking(items[0])}}catch(error){el('trackingState').title='Oracle 추적 목록 조회 실패: '+error.message}
 }
 
 const initialScan=storedScanConfig();
@@ -563,7 +610,7 @@ el('addAvgValue10').addEventListener('click',()=>setFilter('avgValue10',true));e
 el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('liveBtn').addEventListener('click',toggleRealtime);el('marketScanBtn').addEventListener('click',startFullMarketScan);
 el('scanScope').addEventListener('change',()=>{updateScanVisibility();loadCandidates().catch(error=>el('scanProgress').textContent=error.message)});
 ['marketScope','includeEtf','minMarketCap','minOperatingProfit','prealertPct','minAvgValue10','investorMode','minInvestorBuy','minTodayChange','provider'].forEach(id=>el(id).addEventListener('change',saveScanConfig));
-el('prealertPct').addEventListener('input',renderPrealertPct);el('gSymbol').addEventListener('input',()=>{if(el('gSymbol').value.trim()!==selected?.symbol)trackingName='';renderTrackingName()});
+el('prealertPct').addEventListener('input',renderPrealertPct);el('gSymbol').addEventListener('input',queueSymbolSearch);document.addEventListener('click',event=>{if(!event.target.closest('.symbolSearchWrap'))renderSymbolSuggestions([])});
 el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',()=>saveTracking().catch(error=>alert(error.message)));el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',()=>clearTracking().catch(error=>alert(error.message)));el('sizingMode').addEventListener('change',updateSizingVisibility);el('totalInvestment').addEventListener('input',syncUnitAmount);el('exitStrategy').addEventListener('change',()=>calculateGuide(false).catch(()=>{}));
 restoreTracking();
 fetchJson('/api/health').then(result=>result.data).then(async data=>{fullScanSupported=Boolean(data.full_market_scan_supported);manualFullScanSupported=Boolean(data.manual_full_market_scan_supported);appMode=data.app_mode||'vercel';kisConfigured=Boolean(data.kis_configured);healthLoaded=true;el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';const pollSeconds=Math.max(3,Number(data.realtime_poll_seconds||30)),quoteSeconds=Math.max(2,Number(data.quote_poll_seconds||3));realtimeMs=pollSeconds*1000;quoteMs=quoteSeconds*1000;el('pollInterval').textContent=`후보 ${pollSeconds}초 · 시세 ${quoteSeconds}초`;if(!fullScanSupported&&manualFullScanSupported&&!localStorage.getItem(MANUAL_MODE_KEY)){el('scanScope').value='all';localStorage.setItem(MANUAL_MODE_KEY,'1')}updateScanVisibility();await loadOraclePositions();if(!fullScanSupported&&el('scanScope').value==='all')el('scanProgress').textContent='Vercel 모드: 전체시장 새 검색은 수동 1회 실행하며, 이후 실시간 버튼은 그 결과 종목만 브라우저 polling으로 추적합니다.';await loadCandidates()}).catch(error=>{el('health').textContent='API 미연결';el('scanProgress').textContent='API 연결 실패: '+error.message+' · 배포 경로와 FastAPI/Nginx 연결을 확인하세요.'});

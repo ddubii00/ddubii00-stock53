@@ -1,3 +1,7 @@
+import sqlite3
+
+import pytest
+
 from app import store
 
 
@@ -27,6 +31,57 @@ def test_fill_is_only_incremented_by_explicit_confirmation(tmp_path, monkeypatch
     updated = store.confirm_next_fill("000660")
     assert updated["filled_units"] == 2
     assert updated["common_stop"] == 282_000
+
+
+def test_explicit_confirmation_can_reach_six_units_but_not_seven(tmp_path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "positions-six.db"))
+    store.save_position(
+        {
+            "symbol": "000660",
+            "entry_price": 300_000,
+            "n_at_entry": 12_000,
+            "filled_units": 4,
+        }
+    )
+    assert store.confirm_next_fill("000660")["filled_units"] == 5
+    assert store.confirm_next_fill("000660")["filled_units"] == 6
+    with pytest.raises(ValueError, match="six Units"):
+        store.confirm_next_fill("000660")
+
+
+def test_existing_four_unit_sqlite_schema_is_migrated(tmp_path, monkeypatch):
+    path = tmp_path / "positions-v4.db"
+    with sqlite3.connect(path) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE positions (
+              symbol TEXT PRIMARY KEY,
+              name TEXT NOT NULL DEFAULT '',
+              entry_price REAL NOT NULL,
+              n_at_entry REAL NOT NULL,
+              filled_units INTEGER NOT NULL DEFAULT 0 CHECK(filled_units BETWEEN 0 AND 4),
+              sizing_mode TEXT NOT NULL DEFAULT 'fixed',
+              fixed_unit_amount REAL NOT NULL DEFAULT 10000000,
+              account_equity REAL NOT NULL DEFAULT 100000000,
+              risk_pct REAL NOT NULL DEFAULT 0.5,
+              exit_strategy TEXT NOT NULL DEFAULT 'turtle',
+              common_stop REAL NOT NULL DEFAULT 0,
+              status TEXT NOT NULL DEFAULT 'ACTIVE',
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO positions(symbol,entry_price,n_at_entry,filled_units)
+            VALUES('000660',300000,12000,4);
+            """
+        )
+    monkeypatch.setenv("DB_PATH", str(path))
+    store.init_db()
+    migrated = store.confirm_next_fill("000660")
+    assert migrated["filled_units"] == 5
+    with sqlite3.connect(path) as conn:
+        schema = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='positions'"
+        ).fetchone()[0]
+    assert "BETWEEN 0 AND 6" in schema
 
 
 def test_position_persists_selected_exit_strategy(tmp_path, monkeypatch):

@@ -11,6 +11,7 @@ from pathlib import Path
 
 _INIT_LOCK = threading.Lock()
 _INITIALIZED_PATHS: set[str] = set()
+MAX_POSITION_UNITS = 6
 
 
 def db_path() -> str:
@@ -44,7 +45,7 @@ def init_db() -> None:
               name TEXT NOT NULL DEFAULT '',
               entry_price REAL NOT NULL,
               n_at_entry REAL NOT NULL,
-              filled_units INTEGER NOT NULL DEFAULT 0 CHECK(filled_units BETWEEN 0 AND 4),
+              filled_units INTEGER NOT NULL DEFAULT 0 CHECK(filled_units BETWEEN 0 AND 6),
               sizing_mode TEXT NOT NULL DEFAULT 'fixed',
               fixed_unit_amount REAL NOT NULL DEFAULT 10000000,
               account_equity REAL NOT NULL DEFAULT 100000000,
@@ -114,6 +115,42 @@ def init_db() -> None:
                 conn.execute(
                     "ALTER TABLE positions ADD COLUMN exit_strategy TEXT NOT NULL DEFAULT 'turtle'"
                 )
+            position_schema = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='positions'"
+            ).fetchone()
+            schema_sql = str(position_schema[0] or "") if position_schema else ""
+            if "BETWEEN 0 AND 4" in schema_sql.upper():
+                conn.executescript(
+                    """
+                    ALTER TABLE positions RENAME TO positions_units_v4;
+                    CREATE TABLE positions (
+                      symbol TEXT PRIMARY KEY,
+                      name TEXT NOT NULL DEFAULT '',
+                      entry_price REAL NOT NULL,
+                      n_at_entry REAL NOT NULL,
+                      filled_units INTEGER NOT NULL DEFAULT 0 CHECK(filled_units BETWEEN 0 AND 6),
+                      sizing_mode TEXT NOT NULL DEFAULT 'fixed',
+                      fixed_unit_amount REAL NOT NULL DEFAULT 10000000,
+                      account_equity REAL NOT NULL DEFAULT 100000000,
+                      risk_pct REAL NOT NULL DEFAULT 0.5,
+                      exit_strategy TEXT NOT NULL DEFAULT 'turtle',
+                      common_stop REAL NOT NULL DEFAULT 0,
+                      status TEXT NOT NULL DEFAULT 'ACTIVE',
+                      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    INSERT INTO positions(
+                      symbol,name,entry_price,n_at_entry,filled_units,sizing_mode,
+                      fixed_unit_amount,account_equity,risk_pct,exit_strategy,
+                      common_stop,status,updated_at
+                    )
+                    SELECT
+                      symbol,name,entry_price,n_at_entry,filled_units,sizing_mode,
+                      fixed_unit_amount,account_equity,risk_pct,exit_strategy,
+                      common_stop,status,updated_at
+                    FROM positions_units_v4;
+                    DROP TABLE positions_units_v4;
+                    """
+                )
             scan_columns = {
                 row[1] for row in conn.execute("PRAGMA table_info(full_market_scans)").fetchall()
             }
@@ -176,7 +213,7 @@ def save_position(payload: dict) -> None:
     entry_price = float(payload["entry_price"])
     n_at_entry = float(payload["n_at_entry"])
     filled_units = int(payload.get("filled_units", 0))
-    if entry_price <= 0 or n_at_entry <= 0 or not 0 <= filled_units <= 4:
+    if entry_price <= 0 or n_at_entry <= 0 or not 0 <= filled_units <= MAX_POSITION_UNITS:
         raise ValueError("invalid position values")
     requested_stop = float(payload.get("common_stop") or 0)
     common_stop = max(requested_stop, _derived_stop(entry_price, n_at_entry, filled_units))
@@ -230,8 +267,8 @@ def confirm_next_fill(symbol: str) -> dict:
         if row is None:
             raise KeyError(symbol)
         current_units = int(row["filled_units"])
-        if current_units >= 4:
-            raise ValueError("all four Units are already confirmed")
+        if current_units >= MAX_POSITION_UNITS:
+            raise ValueError("all six Units are already confirmed")
         next_units = current_units + 1
         ratcheted_stop = max(
             float(row["common_stop"] or 0),

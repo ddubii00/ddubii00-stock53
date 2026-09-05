@@ -35,6 +35,33 @@ def test_breakout():
     assert r.stage == "BREAKOUT"
 
 
+def test_short_breakout_and_prealert_use_previous_twenty_lows():
+    breaking = analyze(fresh_bars(), 144.0, 1300, min_score=0, prealert_pct=1.0)
+    approaching = analyze(fresh_bars(), 145.725, 1300, min_score=0, prealert_pct=1.0)
+    assert breaking.short_entry20 == 145
+    assert breaking.short_stage == "SHORT_NOW"
+    assert approaching.short_distance_pct == pytest.approx(0.5)
+    assert approaching.short_stage == "SHORT_PREALERT"
+
+
+def test_yesterday_short_breakout_is_not_a_fresh_signal():
+    b = fresh_bars()
+    b[-1] = Bar(high=149, low=144, close=145, volume=1000, value=20_000_000_000)
+    result = analyze(b, 143.5, 1300, min_score=0)
+    assert result.yesterday_short_broke is True
+    assert result.short_stage == "SHORT_FILTERED"
+
+
+def test_long_and_short_levels_include_two_expansion_units():
+    result = analyze(fresh_bars(), 149.0, 1300, min_score=0)
+    assert result.add5 == result.breakout20 + 2 * result.atr20
+    assert result.add6 == result.breakout20 + 2.5 * result.atr20
+    assert result.short_add5 == result.short_entry20 - 2 * result.atr20
+    assert result.short_add6 == result.short_entry20 - 2.5 * result.atr20
+    assert result.short_initial_stop == result.short_entry20 + 2 * result.atr20
+    assert result.short_exit10 == max(bar.high for bar in fresh_bars()[-10:])
+
+
 def test_intraday_breakout_reverts_to_prealert_when_current_price_retraces():
     r = analyze(
         fresh_bars(),

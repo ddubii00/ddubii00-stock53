@@ -47,8 +47,21 @@ class TurtleResult:
     add2: float
     add3: float
     add4: float
+    add5: float
+    add6: float
     initial_stop: float
     exit10: float
+    short_stage: str
+    short_entry20: float
+    short_distance_pct: float
+    yesterday_short_broke: bool
+    short_add2: float
+    short_add3: float
+    short_add4: float
+    short_add5: float
+    short_add6: float
+    short_initial_stop: float
+    short_exit10: float
     reasons: list[str]
 
     def to_dict(self) -> dict:
@@ -112,6 +125,9 @@ def analyze(
     breakout20 = max(b.high for b in bars[-20:])
     yesterday_breakout_level = max(b.high for b in bars[-21:-1])
     yesterday_broke = bars[-1].high > yesterday_breakout_level
+    short_entry20 = min(b.low for b in bars[-20:])
+    yesterday_short_level = min(b.low for b in bars[-21:-1])
+    yesterday_short_broke = bars[-1].low < yesterday_short_level
 
     n = atr(bars, 20)
     # The visible BREAKOUT state follows the current price.  Keep the intraday
@@ -119,6 +135,7 @@ def analyze(
     # continuing to label it as an active breakout.
     intraday_broke = bool(today_high is not None and today_high >= breakout20)
     distance_pct = (breakout20 - current) / breakout20 * 100.0
+    short_distance_pct = (current - short_entry20) / short_entry20 * 100.0
     atr_pct = n / current * 100.0
     closes = [b.close for b in bars]
     ma20 = _avg(closes[-20:])
@@ -176,6 +193,15 @@ def analyze(
     else:
         stage = "WATCH"
 
+    if yesterday_short_broke:
+        short_stage = "SHORT_FILTERED"
+    elif current <= short_entry20:
+        short_stage = "SHORT_NOW"
+    elif 0.0 < short_distance_pct <= prealert_pct + 1e-9:
+        short_stage = "SHORT_PREALERT"
+    else:
+        short_stage = "SHORT_WAIT"
+
     return TurtleResult(
         breakout20=breakout20,
         distance_pct=distance_pct,
@@ -200,7 +226,20 @@ def analyze(
         add2=breakout20 + 0.5 * n,
         add3=breakout20 + 1.0 * n,
         add4=breakout20 + 1.5 * n,
+        add5=breakout20 + 2.0 * n,
+        add6=breakout20 + 2.5 * n,
         initial_stop=breakout20 - 2.0 * n,
         exit10=min(b.low for b in bars[-10:]),
+        short_stage=short_stage,
+        short_entry20=short_entry20,
+        short_distance_pct=short_distance_pct,
+        yesterday_short_broke=yesterday_short_broke,
+        short_add2=short_entry20 - 0.5 * n,
+        short_add3=short_entry20 - 1.0 * n,
+        short_add4=short_entry20 - 1.5 * n,
+        short_add5=short_entry20 - 2.0 * n,
+        short_add6=short_entry20 - 2.5 * n,
+        short_initial_stop=short_entry20 + 2.0 * n,
+        short_exit10=max(b.high for b in bars[-10:]),
         reasons=reasons,
     )

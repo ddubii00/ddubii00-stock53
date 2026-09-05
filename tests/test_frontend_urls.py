@@ -15,6 +15,7 @@ API_PATHS = [
     "/api/candidates?scope=all",
     "/api/quotes?symbols=000660",
     "/api/investor-flows?symbols=000660",
+    "/api/symbol-search?q=005930",
     "/api/full-market-scans",
     "/api/full-market-scans/7",
     "/api/full-market-scan-once",
@@ -175,12 +176,51 @@ def test_oracle_labels_naver_as_kis_fallback():
     assert "kisConfigured=Boolean(data.kis_configured)" in source
 
 
-def test_candidate_click_is_kept_in_the_tracking_list_with_market_details():
+def test_candidate_requires_explicit_select_button_and_keeps_market_details():
     source = INDEX.read_text(encoding="utf-8")
-    assert "showCandidate(item,{persistSelection:true})" in source
+    assert "choose.textContent='선택'" in source
+    assert "choose.addEventListener('click',event=>{event.stopPropagation();selectCandidate(item)})" in source
+    assert "row.addEventListener('click',()=>showCandidate(item,{populateTracking:false,persistSelection:false}))" in source
+    assert "showCandidate(chosen,{populateTracking:true,persistSelection:true});await calculateGuide(false)" in source
     assert "function persistCandidateSelection(item)" in source
     assert "function syncTrackedCandidateSnapshots(items)" in source
     assert "20D 돌파가 ${fmt(item.breakout20||item.entry_price)} · ATR20" in source
+
+
+def test_selected_guide_supports_symbol_autocomplete_and_six_units():
+    source = INDEX.read_text(encoding="utf-8")
+    assert 'id="symbolSuggestions"' in source
+    assert "fetchJson('/api/symbol-search?'" in source
+    assert "function chooseSymbolSuggestion(item)" in source
+    assert "{refresh:false}" in source
+    assert 'id="gUnits"' in source
+    assert '<option value="6">6 Units · 확장 한도</option>' in source
+    assert 'id="u5"' in source and 'id="u6"' in source
+    assert "for(let i=0;i<6;i++)" in source
+    assert "if(units>=6)" in source
+
+
+def test_amounts_are_entered_and_displayed_in_manwon():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "const manwon=" in source
+    assert "const wonFromManwon=" in source
+    assert "총 투자 한도 (만원 · 6 Units)" in source
+    assert "계좌 잔고 (만원)" in source
+    assert "위험한도 (%)" in source
+    assert "el('unitAmount').value=Math.max(0,Math.floor(num('totalInvestment')/6))" in source
+    assert "total_investment:Number(item.fixed_unit_amount||10000000)*6" in source
+    assert "el('gRiskBudget').textContent=manwon(data.risk_budget)" in source
+
+
+def test_long_badge_short_guide_and_atr_basis_are_visible():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "perspective.textContent='롱'" in source
+    assert "숏 관점 · 하락 위험 가이드" in source
+    assert "20D Low 숏 진입가" in source
+    assert "현재 ATR20" in source
+    assert "진입 당시 고정 N" in source
+    assert 'id="gActionName"' in source and 'id="sActionName"' in source
+    assert "renderShortGuide({...data,name:trackingName||data.name})" in source
 
 
 def test_quality_explanation_is_visible_and_separate_from_breakout():

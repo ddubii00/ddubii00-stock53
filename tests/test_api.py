@@ -50,6 +50,9 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     assert len(investor_flows.json()["items"]) == 2
     assert all(item["investor_date"] for item in investor_flows.json()["items"])
     assert all(item["foreign_net_buy_100m"] is not None for item in investor_flows.json()["items"])
+    symbols = client.get("/api/symbol-search", params={"q": "삼성", "provider": "demo"})
+    assert symbols.status_code == 200
+    assert any(item["symbol"] == "005930" for item in symbols.json()["items"])
 
 
 def test_oracle_live_candidate_subset_is_not_limited_to_vercel_default(monkeypatch):
@@ -119,7 +122,43 @@ def test_guide_route_returns_position_action():
         },
     )
     assert response.status_code == 200
-    assert response.json()["action"] in {"HOLD", "ADD_NOW", "STOP_NOW", "EXIT_NOW"}
+    payload = response.json()
+    assert payload["action"] in {"HOLD", "ADD_NOW", "STOP_NOW", "EXIT_NOW"}
+    assert payload["current_atr"] > 0
+    assert payload["n_at_entry"] == 5_000
+    assert payload["max_units"] == 6
+    assert payload["original_max_units"] == 4
+    assert payload["short_stage"] in {
+        "SHORT_WAIT",
+        "SHORT_PREALERT",
+        "SHORT_NOW",
+        "SHORT_FILTERED",
+    }
+
+
+def test_guide_accepts_six_units_and_exposes_risk_formula_values():
+    response = client.post(
+        "/api/guide",
+        json={
+            "symbol": "000660",
+            "entry_price": 150_000,
+            "n_at_entry": 700,
+            "filled_units": 6,
+            "sizing_mode": "risk",
+            "account_equity": 150_000,
+            "risk_pct": 2,
+            "prealert_pct": 1.5,
+            "provider": "demo",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["risk_budget"] == 3_000
+    assert payload["risk_per_share"] == 1_400
+    assert payload["risk_qty_raw"] == 3_000 / 1_400
+    assert payload["unit_quantities"] == [2, 2, 2, 2, 2, 2]
+    assert payload["next_add_price"] is None
+    assert payload["short_prealert_pct"] == 1.5
 
 
 def test_guide_route_returns_selected_sell_strategy():
