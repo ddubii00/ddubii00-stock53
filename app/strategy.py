@@ -125,8 +125,11 @@ def analyze(
     breakout20 = max(b.high for b in bars[-20:])
     yesterday_breakout_level = max(b.high for b in bars[-21:-1])
     yesterday_broke = bars[-1].high > yesterday_breakout_level
-    short_entry20 = min(b.low for b in bars[-20:])
-    yesterday_short_level = min(b.low for b in bars[-21:-1])
+    # A "20-day low including today" is tested against the 19 completed
+    # sessions before today.  Yesterday's freshness check uses the 19 sessions
+    # that preceded yesterday, so today's partial price never enters a bar list.
+    short_entry20 = min(b.low for b in bars[-19:])
+    yesterday_short_level = min(b.low for b in bars[-20:-1])
     yesterday_short_broke = bars[-1].low < yesterday_short_level
 
     n = atr(bars, 20)
@@ -196,11 +199,11 @@ def analyze(
     if yesterday_short_broke:
         short_stage = "SHORT_FILTERED"
     elif current <= short_entry20:
-        short_stage = "SHORT_NOW"
+        short_stage = "SHORT_BREAKOUT"
     elif 0.0 < short_distance_pct <= prealert_pct + 1e-9:
         short_stage = "SHORT_PREALERT"
     else:
-        short_stage = "SHORT_WAIT"
+        short_stage = "SHORT_WATCH"
 
     return TurtleResult(
         breakout20=breakout20,

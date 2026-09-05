@@ -129,9 +129,9 @@ def test_guide_route_returns_position_action():
     assert payload["max_units"] == 6
     assert payload["original_max_units"] == 4
     assert payload["short_stage"] in {
-        "SHORT_WAIT",
+        "SHORT_WATCH",
         "SHORT_PREALERT",
-        "SHORT_NOW",
+        "SHORT_BREAKOUT",
         "SHORT_FILTERED",
     }
 
@@ -155,10 +155,38 @@ def test_guide_accepts_six_units_and_exposes_risk_formula_values():
     payload = response.json()
     assert payload["risk_budget"] == 3_000
     assert payload["risk_per_share"] == 1_400
-    assert payload["risk_qty_raw"] == 3_000 / 1_400
-    assert payload["unit_quantities"] == [2, 2, 2, 2, 2, 2]
+    assert payload["unit_risk_budget"] == 500
+    assert payload["risk_qty_raw"] == 500 / 1_400
+    assert payload["unit_quantities"] == [0, 0, 0, 0, 0, 0]
     assert payload["next_add_price"] is None
     assert payload["short_prealert_pct"] == 1.5
+
+
+def test_oracle_confirm_fill_accepts_actual_prices_and_multiple_units(monkeypatch, tmp_path):
+    monkeypatch.setenv("APP_MODE", "oracle")
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "actual-fills.db"))
+    saved = client.post(
+        "/api/positions",
+        json={
+            "symbol": "000660",
+            "entry_price": 300_000,
+            "n_at_entry": 12_000,
+            "filled_units": 0,
+            "side": "long",
+            "provider": "demo",
+        },
+    )
+    assert saved.status_code == 200
+    confirmed = client.post(
+        "/api/positions/000660/confirm-fill",
+        json={"fill_prices": [303_000, 311_000, 320_000]},
+    )
+    assert confirmed.status_code == 200
+    position = confirmed.json()["position"]
+    assert position["entry_price"] == 303_000
+    assert position["fill_prices"] == [303_000, 311_000, 320_000]
+    assert position["filled_units"] == 3
+    assert position["common_stop"] == 296_000
 
 
 def test_guide_route_returns_selected_sell_strategy():

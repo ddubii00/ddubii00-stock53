@@ -39,7 +39,7 @@ def test_short_breakout_and_prealert_use_previous_twenty_lows():
     breaking = analyze(fresh_bars(), 144.0, 1300, min_score=0, prealert_pct=1.0)
     approaching = analyze(fresh_bars(), 145.725, 1300, min_score=0, prealert_pct=1.0)
     assert breaking.short_entry20 == 145
-    assert breaking.short_stage == "SHORT_NOW"
+    assert breaking.short_stage == "SHORT_BREAKOUT"
     assert approaching.short_distance_pct == pytest.approx(0.5)
     assert approaching.short_stage == "SHORT_PREALERT"
 
@@ -50,6 +50,16 @@ def test_yesterday_short_breakout_is_not_a_fresh_signal():
     result = analyze(b, 143.5, 1300, min_score=0)
     assert result.yesterday_short_broke is True
     assert result.short_stage == "SHORT_FILTERED"
+
+
+def test_short_twenty_day_low_includes_today_and_uses_previous_nineteen_sessions():
+    b = fresh_bars()
+    b[-20] = Bar(high=150, low=1, close=147, volume=1000, value=20_000_000_000)
+    for index in range(-19, 0):
+        b[index] = Bar(high=150, low=100, close=147, volume=1000, value=20_000_000_000)
+    result = analyze(b, 99.5, 1300, min_score=0, prealert_pct=1.0)
+    assert result.short_entry20 == 100
+    assert result.short_stage == "SHORT_BREAKOUT"
 
 
 def test_long_and_short_levels_include_two_expansion_units():

@@ -176,6 +176,40 @@ class IntradayNearButCurrentDistantDemo(CountingDemo):
         )
 
 
+class ShortSignalDemo(CountingDemo):
+    def __init__(self, ratio):
+        super().__init__()
+        self.ratio = ratio
+
+    def get_current_price(self, symbol):
+        bars = self.get_daily_ohlcv(symbol, 260)
+        target = min(bar.low for bar in bars[-19:])
+        price = target * self.ratio
+        return Quote(
+            symbol=symbol,
+            price=price,
+            volume=1_100_000,
+            source=self.name,
+            day_high=price,
+            change_pct=(price / bars[-1].close - 1) * 100,
+        )
+
+    def get_daily_ohlcv(self, symbol, count=260):
+        bars = super().get_daily_ohlcv(symbol, count)
+        floor = min(bar.low for bar in bars[-20:])
+        for index in range(len(bars) - 20, len(bars)):
+            bar = bars[index]
+            bars[index] = type(bar)(
+                high=max(bar.high, floor + 2_000),
+                low=floor,
+                close=max(bar.close, floor + 1_000),
+                volume=bar.volume,
+                value=bar.value,
+                date=bar.date,
+            )
+        return bars
+
+
 def test_full_scan_filters_fundamentals_before_fetching_price_history(monkeypatch, tmp_path):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "scan.db"))
     provider = CountingDemo()
@@ -213,6 +247,31 @@ def test_full_scan_visible_stage_uses_current_price_not_intraday_high(monkeypatc
         universe_provider=FilterUniverse(),
     )
     assert items == []
+
+
+def test_full_scan_returns_short_prealert_and_breakout_candidates(monkeypatch, tmp_path):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "short-signals.db"))
+    common = dict(
+        provider="demo",
+        market="KOSPI",
+        min_market_cap_100m=500,
+        min_operating_profit_100m=50,
+        avg_value10_filter_enabled=False,
+    )
+    prealerts, _ = scan_full_market(
+        FullScanConfig(**common, signal_mode="prealert", prealert_pct=1),
+        market_provider=ShortSignalDemo(1.005),
+        universe_provider=FilterUniverse(),
+    )
+    breakouts, _ = scan_full_market(
+        FullScanConfig(**common, signal_mode="breakout", prealert_pct=1),
+        market_provider=ShortSignalDemo(0.999),
+        universe_provider=FilterUniverse(),
+    )
+    assert {item["symbol"] for item in prealerts} == {"000660", "005380"}
+    assert all(item["short_stage"] == "SHORT_PREALERT" for item in prealerts)
+    assert {item["symbol"] for item in breakouts} == {"000660", "005380"}
+    assert all(item["short_stage"] == "SHORT_BREAKOUT" for item in breakouts)
 
 
 def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):

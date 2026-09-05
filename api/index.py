@@ -5,6 +5,7 @@ import re
 import time
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -28,6 +29,7 @@ SYMBOL_RE = re.compile(r"^[0-9A-Z]{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
 app = FastAPI(title="Turtle Signal Guide", version="0.9.0")
+PositivePrice = Annotated[float, Field(gt=0)]
 
 DEFAULT_SYMBOLS = {
     "000660": "SK하이닉스",
@@ -62,7 +64,9 @@ class GuideIn(BaseModel):
     symbol: str
     name: str = ""
     entry_price: float = Field(gt=0)
+    side: str = Field(default="long", pattern="^(long|short)$")
     n_at_entry: float | None = Field(default=None, gt=0)
+    fill_prices: list[PositivePrice] = Field(default_factory=list, max_length=6)
     filled_units: int = Field(default=0, ge=0, le=6)
     sizing_mode: str = Field(default="fixed", pattern="^(fixed|risk)$")
     fixed_unit_amount: float = Field(default=10_000_000, ge=0)
@@ -77,6 +81,10 @@ class GuideIn(BaseModel):
 class SavePositionIn(GuideIn):
     name: str = ""
     n_at_entry: float = Field(gt=0)
+
+
+class ConfirmFillsIn(BaseModel):
+    fill_prices: list[PositivePrice] = Field(min_length=1, max_length=6)
 
 
 class FullMarketScanIn(BaseModel):
@@ -450,6 +458,8 @@ def _build_guide(payload: GuideIn) -> dict:
         previous_stop=payload.previous_stop,
         exit_strategy=payload.exit_strategy,
         prealert_pct=payload.prealert_pct,
+        side=payload.side,
+        fill_prices=payload.fill_prices,
     )
     response = guide.to_dict()
     response.update(
@@ -474,6 +484,7 @@ def guide_get(
     n_at_entry: float = 5_000,
     filled_units: int = 0,
     exit_strategy: str = "turtle",
+    side: str = "long",
     provider: str = "demo",
 ):
     try:
@@ -484,6 +495,7 @@ def guide_get(
                 n_at_entry=n_at_entry,
                 filled_units=filled_units,
                 exit_strategy=exit_strategy,
+                side=side,
                 provider=provider,
             )
         )
@@ -510,11 +522,16 @@ def position_save(payload: SavePositionIn):
 
 
 @app.post("/api/positions/{symbol}/confirm-fill")
-def position_confirm_fill(symbol: str):
+def position_confirm_fill(symbol: str, payload: ConfirmFillsIn):
     if os.getenv("APP_MODE", "vercel") == "vercel":
         raise HTTPException(status_code=409, detail="Vercel에서는 사용자가 localStorage 상태를 직접 확정합니다")
     try:
-        return {"ok": True, "position": build_position_state_store().confirm_next_fill(_valid_symbol(symbol))}
+        return {
+            "ok": True,
+            "position": build_position_state_store().confirm_fills(
+                _valid_symbol(symbol), payload.fill_prices
+            ),
+        }
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="ACTIVE position not found") from exc
     except ValueError as exc:

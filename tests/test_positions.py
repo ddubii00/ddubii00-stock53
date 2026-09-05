@@ -44,6 +44,24 @@ def test_textbook_risk_sizing_example_floors_fractional_quantity():
     assert qty == 2
 
 
+def test_six_unit_risk_guide_splits_total_budget_across_pyramid():
+    guide = build_position_guide(
+        symbol="000660",
+        bars=bars(),
+        current=100_000,
+        entry_price=100_000,
+        n_at_entry=700,
+        filled_units=0,
+        sizing_mode="risk",
+        account_equity=150_000,
+        risk_pct=2,
+    )
+    assert guide.risk_budget == 3_000
+    assert guide.unit_risk_budget == 500
+    assert guide.risk_qty_raw == pytest.approx(500 / 1_400)
+    assert guide.unit_quantities == [0, 0, 0, 0, 0, 0]
+
+
 def test_add_now_at_half_n():
     g = build_position_guide(
         symbol="000660",
@@ -137,7 +155,7 @@ def test_short_perspective_uses_twenty_day_low_and_current_atr():
         filled_units=0,
         prealert_pct=1.5,
     )
-    short_entry = min(bar.low for bar in history[-20:])
+    short_entry = min(bar.low for bar in history[-19:])
     assert guide.short_entry20 == short_entry
     assert guide.short_stop == short_entry + 2 * guide.current_atr
     assert guide.short_exit10 == max(bar.high for bar in history[-10:])
@@ -156,6 +174,75 @@ def test_common_stop_ratchets_after_add():
         filled_units=2,
     )
     assert g.common_stop == 282_000  # 306,000 - 24,000
+
+
+def test_actual_fill_prices_drive_total_cost_and_common_stop():
+    guide = build_position_guide(
+        symbol="000660",
+        bars=bars(),
+        current=325_000,
+        entry_price=303_000,
+        n_at_entry=12_000,
+        filled_units=3,
+        fill_prices=[303_000, 311_000, 320_000],
+    )
+    assert guide.fill_price_basis == "actual"
+    assert guide.unit_prices[:3] == [303_000, 311_000, 320_000]
+    assert guide.common_stop == 296_000
+    assert guide.total_qty == 33 + 32 + 31
+    assert guide.total_cost == 33 * 303_000 + 32 * 311_000 + 31 * 320_000
+
+
+def test_gap_across_multiple_levels_reports_all_pending_units_without_auto_fill():
+    guide = build_position_guide(
+        symbol="000660",
+        bars=bars(),
+        current=320_000,
+        entry_price=300_000,
+        n_at_entry=12_000,
+        filled_units=1,
+        fill_prices=[301_000],
+    )
+    assert guide.filled_units == 1
+    assert guide.reached_unit_count == 4
+    assert guide.pending_reached_units == 3
+    assert guide.action == "ADD_NOW"
+    assert "#2~#4" in guide.reasons[0]
+
+
+def test_short_position_uses_downward_adds_upper_stop_and_ten_day_high_exit():
+    history = [Bar(high=120, low=80, close=100) for _ in range(140)]
+    guide = build_position_guide(
+        symbol="000660",
+        bars=history,
+        current=88,
+        entry_price=100,
+        n_at_entry=5,
+        filled_units=2,
+        side="short",
+        fill_prices=[99, 96],
+    )
+    assert guide.side == "short"
+    assert guide.add_levels == [100, 97.5, 95, 92.5, 90, 87.5]
+    assert guide.common_stop == 106
+    assert guide.exit10 == 120
+    assert guide.action == "ADD_NOW"
+    assert guide.sell_action == "COVER_WAIT"
+
+
+def test_short_stop_ratchets_down_and_never_back_up():
+    guide = build_position_guide(
+        symbol="000660",
+        bars=bars(),
+        current=290_000,
+        entry_price=300_000,
+        n_at_entry=12_000,
+        filled_units=2,
+        side="short",
+        fill_prices=[300_000, 292_000],
+        previous_stop=310_000,
+    )
+    assert guide.common_stop == 310_000
 
 
 def test_common_stop_never_moves_down():

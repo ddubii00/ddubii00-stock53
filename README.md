@@ -40,8 +40,8 @@ Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에�
 원조 Turtle의 한도는 4 Units입니다. #5·#6은 사용자의 요청에 따른 확장으로 화면에서 별도 색으로 구분합니다.
 
 - fixed: 각 Unit마다 `floor(Unit 목표금액 / 해당 Unit 가격)`을 별도로 계산
-- risk: `floor((account equity × risk %) / (2N))`
-- 공통 보호손절: 최근 확정 Unit 가격 `- 2N`
+- risk: 총 위험예산 `account equity × risk %`를 6개 계획 Unit에 나눈 뒤 각 Unit마다 `floor(Unit 위험예산 / (2N))`
+- 공통 보호손절: 롱은 최근 **실제** 확정 Unit 체결가 `- 2N`, 숏은 `+ 2N`
 - stop은 이전 저장값보다 내려가지 않음
 - STOP과 EXIT가 동시에 충족되면 STOP 우선
 
@@ -51,13 +51,15 @@ Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에�
 - `ma_staged`: 조기 수익보호용 변형. MA5 이탈 시 50%, MA10 이탈 시 잔여 포지션 정리
 - 어느 모드든 `최근 체결 Unit - 2N` 보호손절과 10D Low 전량청산이 이동평균 기준보다 우선
 
-risk 방식은 개인용 보수적 가이드이며 원조 futures contract sizing 전체를 복제하는 모델이 아닙니다. 예를 들어 계좌 150,000, 위험한도 2%, N=700이면 위험예산 3,000, 주당 2N 위험 1,400, 원수량 2.14를 계산하고 소수점 이하를 버려 2주(또는 상품에 맞는 2계약)로 안내합니다.
+risk 방식은 개인용 보수적 가이드이며 원조 futures contract sizing 전체를 복제하는 모델이 아닙니다. 교재의 단일 진입 계산은 계좌 150,000, 위험한도 2%, N=700일 때 위험예산 3,000, 주당 2N 위험 1,400, 원수량 2.14를 소수점 이하 절삭해 2주(또는 2계약)입니다. 이 앱의 **6 Unit 피라미드 risk 모드**에서는 같은 총 위험한도를 Unit마다 여섯 번 반복하지 않도록 총 위험예산을 6등분한 값을 Unit별 수량에 사용합니다.
+
+체결 확정 시에는 이론적 `E ± 0.5N`이 아니라 사용자가 입력한 실제 체결가를 저장합니다. 갭으로 여러 레벨을 한 번에 통과하면 도달한 Unit 수를 함께 표시하고, 쉼표로 여러 실제 체결가를 입력해 한 번에 확정할 수 있습니다. 가격 조건만으로 `filled_units`를 자동 증가시키지는 않습니다. 기존 DB에 실제 체결가 이력이 없는 Unit은 이론가 임시 대체라고 명시합니다.
 
 ### 숏 관점
 
-후보 표의 신호는 `롱`으로 표시합니다. 선택 종목 아래에는 정통 Turtle을 상하 대칭한 읽기 전용 하락 관점도 제공합니다.
+전체시장과 watchlist 결과는 롱 PREALERT/BREAKOUT과 숏 PREALERT/BREAKOUT 표를 각각 제공합니다. 후보 상세 행을 보는 것만으로 포지션이 선택되지는 않으며, `롱 선택` 또는 `숏 선택` 버튼을 눌러야 해당 방향의 매매 가이드가 열립니다. 롱 선택 종목은 숏 포지션 가이드에 표시하지 않습니다.
 
-- 숏 진입 관점: `MIN(Low[D-1] ... Low[D-20])` 현재가 하향 돌파
+- 숏 진입 관점: 오늘을 20번째 관측치로 보고 `MIN(Low[D-1] ... Low[D-19])`에 현재가가 접근하면 PREALERT, 현재가가 그 값 이하이면 BREAKOUT
 - 어제 이미 돌파했다면 오늘 신규 숏 신호에서 제외
 - 피라미딩 관점: 진입가에서 `0.5N`씩 하락할 때 추가
 - 보호손절 관점: 숏 진입가 `+ 2N`
@@ -155,7 +157,8 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - Vercel의 `전체시장 새 검색`: 클릭한 요청 안에서 Naver 전체시장을 수동 1회 계산하고 결과를 브라우저에 보관. background worker나 반복 전체검색은 실행하지 않음
 - 전체검색 중복 실행 방지. Oracle 실시간 검색 후보 상한은 `ORACLE_LIVE_SCAN_MAX_SYMBOLS`(기본 200)로 조정 가능하며 상한을 넘으면 화면에 잘림 여부를 표시
 - Vercel 상태: `localStorage`
-- `진입/추매 완료`: 확인창 이후에만 `filled_units` 1 증가, 최대 6 Units
+- `진입/추매 완료`: 이번 실제 체결가를 입력하고 확인한 뒤에만 `filled_units` 증가. 쉼표로 여러 가격을 입력하면 갭 체결 여러 Unit을 한 번에 확정하며 최대 6 Units
+- 포지션 방향: 롱/숏을 명시적으로 선택·저장. 롱 가이드와 숏 가이드는 동시에 섞어 표시하지 않으며 Oracle SQLite worker도 저장된 방향·실제 체결가를 사용
 - 추적 종목: 여러 종목 추가·변경·보기, 총 투자한도와 계좌 잔고는 만원 단위 입력, 1 Unit은 총액÷6으로 표시, 위험한도(%) 입력, 매도 완료 후 삭제
 - 현재 전략 행동과 현재 매도 행동 바로 아래에 선택한 종목명·코드를 표시
 - 현재 ATR20은 완료 일봉 기준으로 갱신하되, 진입 후 add/stop/risk 계산은 입력·저장된 Entry 당시 고정 N을 사용
@@ -179,7 +182,7 @@ worker는 가격 조건이 충족되어도 `filled_units`를 자동 변경하지
 | POST | `/api/scan` | 완료 일봉 직접 분석 |
 | GET/POST | `/api/guide` | 선택종목 행동 가이드 |
 | GET/POST | `/api/positions` | Oracle position state |
-| POST | `/api/positions/{symbol}/confirm-fill` | 사용자의 체결 수동 확정 |
+| POST | `/api/positions/{symbol}/confirm-fill` | `{"fill_prices":[실제 체결가...]}`로 한 개 이상 Unit 수동 확정 |
 | DELETE | `/api/positions/{symbol}` | 매도 완료 position을 CLOSED로 전환 |
 
 행동 상태는 `WAIT_ENTRY`, `ENTRY_NOW`, `HOLD`, `ADD_NOW`, `STOP_NOW`, `EXIT_NOW`입니다.
@@ -271,7 +274,8 @@ DB_PATH=./data/turtle.db
 - 정통 10D Low 매도 / MA5·MA10 분할 매도 / 보호손절 우선순위
 - SQLite signal dedup / 수동 fill 확정
 - 기존 4 Unit SQLite schema의 6 Unit 자동 migration
-- 롱/숏 20일 채널과 숏 10D High 청산 관점
+- 롱/숏 전체시장 20일 채널, 방향별 position state, 숏 10D High 청산
+- 실제 체결가 저장/다중 Unit 확정/갭 도달 수와 6 Unit 총 위험예산 보정
 - KIS 종목 master 파싱과 한글 부분검색
 - provider snapshot 일관성
 - Naver NXT 거래 세션 현재가 선택

@@ -92,8 +92,8 @@ def test_live_mode_rechecks_only_the_initial_full_market_candidates():
     assert "include_filtered:'true'" in source
     assert "조회 오류 ${errorCount}개(마지막 값 유지·다음 주기 재시도)" in source
     assert "전체시장·재무 재검색 없음" in source
-    assert "candidateItems=liveSeedItems.filter(item=>item.stage==='PREALERT'||item.stage==='BREAKOUT'||item.stage==='WATCH')" in source
-    assert "범위 이탈 추적 ${watches}개" in source
+    assert "candidateItems=liveSeedItems.map(item=>({...item}))" in source
+    assert "숏 PREALERT ${shortPrealerts} / BREAKOUT ${shortBreakouts} / 이탈 ${shortWatches}" in source
 
 
 def test_live_button_is_next_to_manual_full_market_scan_button():
@@ -108,7 +108,7 @@ def test_live_button_is_next_to_manual_full_market_scan_button():
 def test_live_stage_and_target_distance_follow_current_price():
     source = INDEX.read_text(encoding="utf-8")
     start = source.index("function changeClass")
-    end = source.index("function naverStockUrl", start)
+    end = source.index("function renderShortGuide", start)
     helpers = source[start:end]
     script = "\n".join(
         [
@@ -145,7 +145,7 @@ def test_out_of_range_live_candidates_are_separate_from_prealert():
     assert 'id="watchSection"' in source
     assert 'id="watchBody"' in source
     assert "prealerts=rows.filter(item=>item.stage==='PREALERT')" in source
-    assert "watches=rows.filter(item=>item.stage==='WATCH')" in source
+    assert "watches=rows.filter(item=>item._track_long&&item.stage==='WATCH')" in source
     assert "renderGroup('prealertBody',prealerts" in source
 
 
@@ -161,7 +161,7 @@ def test_investor_flow_is_split_and_labeled_with_its_basis_date():
 
 def test_candidate_table_shows_atr_and_current_state_badges():
     source = INDEX.read_text(encoding="utf-8")
-    assert source.count('data-sort="atr20">ATR20(N)') == 3
+    assert source.count('data-sort="atr20">ATR20(N)') == 6
     assert "fmt(item.atr20)" in source
     assert "장중 돌파 후 하회" in source
     assert "접근범위 이탈" in source
@@ -178,13 +178,13 @@ def test_oracle_labels_naver_as_kis_fallback():
 
 def test_candidate_requires_explicit_select_button_and_keeps_market_details():
     source = INDEX.read_text(encoding="utf-8")
-    assert "choose.textContent='선택'" in source
-    assert "choose.addEventListener('click',event=>{event.stopPropagation();selectCandidate(item)})" in source
-    assert "row.addEventListener('click',()=>showCandidate(item,{populateTracking:false,persistSelection:false}))" in source
-    assert "showCandidate(chosen,{populateTracking:true,persistSelection:true});await calculateGuide(false)" in source
-    assert "function persistCandidateSelection(item)" in source
+    assert "choose.textContent=(isShort?'숏':'롱')+' 선택'" in source
+    assert "selectCandidate(item,{side:perspective})" in source
+    assert "detailPerspective:perspective" in source
+    assert "selectionSide:side,detailPerspective:side" in source
+    assert "function persistCandidateSelection(item,side='long')" in source
     assert "function syncTrackedCandidateSnapshots(items)" in source
-    assert "20D 돌파가 ${fmt(item.breakout20||item.entry_price)} · ATR20" in source
+    assert "20D ${short?'신저가':'돌파가'}" in source
 
 
 def test_selected_guide_supports_symbol_autocomplete_and_six_units():
@@ -192,12 +192,15 @@ def test_selected_guide_supports_symbol_autocomplete_and_six_units():
     assert 'id="symbolSuggestions"' in source
     assert "fetchJson('/api/symbol-search?'" in source
     assert "function chooseSymbolSuggestion(item)" in source
-    assert "{refresh:false}" in source
+    assert "{refresh:false,side:el('positionSide').value}" in source
     assert 'id="gUnits"' in source
     assert '<option value="6">6 Units · 확장 한도</option>' in source
     assert 'id="u5"' in source and 'id="u6"' in source
     assert "for(let i=0;i<6;i++)" in source
     assert "if(units>=6)" in source
+    assert 'id="newFillPrices"' in source
+    assert "json:JSON.stringify({fill_prices:newPrices})" not in source
+    assert "JSON.stringify({fill_prices:newPrices})" in source
 
 
 def test_amounts_are_entered_and_displayed_in_manwon():
@@ -214,13 +217,15 @@ def test_amounts_are_entered_and_displayed_in_manwon():
 
 def test_long_badge_short_guide_and_atr_basis_are_visible():
     source = INDEX.read_text(encoding="utf-8")
-    assert "perspective.textContent='롱'" in source
-    assert "숏 관점 · 하락 위험 가이드" in source
-    assert "20D Low 숏 진입가" in source
+    assert "badge.textContent=isShort?'숏':'롱'" in source
+    assert "숏 포지션 · 하락 매매 가이드" in source
+    assert "최초 숏 Entry" in source
     assert "현재 ATR20" in source
     assert "진입 당시 고정 N" in source
     assert 'id="gActionName"' in source and 'id="sActionName"' in source
     assert "renderShortGuide({...data,name:trackingName||data.name})" in source
+    assert "if(data.side!=='short')return" in source
+    assert "document.querySelectorAll('.shortOnly')" in source
 
 
 def test_quality_explanation_is_visible_and_separate_from_breakout():
@@ -232,9 +237,48 @@ def test_quality_explanation_is_visible_and_separate_from_breakout():
 
 def test_prealert_table_is_rendered_before_breakout_table():
     source = INDEX.read_text(encoding="utf-8")
-    prealert = '<section class="signalSection"><h3 class="signalSectionTitle yellow">PREALERT'
-    breakout = '<section class="signalSection"><h3 class="signalSectionTitle green">BREAKOUT'
+    prealert = '<section class="signalSection"><h3 class="signalSectionTitle yellow">롱 PREALERT'
+    breakout = '<section class="signalSection"><h3 class="signalSectionTitle green">롱 BREAKOUT'
     assert source.index(prealert) < source.index(breakout)
+
+
+def test_short_prealert_and_breakout_tables_follow_long_tables():
+    source = INDEX.read_text(encoding="utf-8")
+    long_breakout = 'class="signalSectionTitle green">롱 BREAKOUT'
+    short_prealert = 'class="signalSectionTitle yellow">숏 PREALERT'
+    short_breakout = 'class="signalSectionTitle red">숏 BREAKOUT'
+    assert source.index(long_breakout) < source.index(short_prealert) < source.index(short_breakout)
+    assert 'id="shortPrealertBody"' in source
+    assert 'id="shortBreakoutBody"' in source
+    assert 'id="shortWatchBody"' in source
+    assert 'data-sort="short_entry20">20D 신저가' in source
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is needed for frontend JS test")
+def test_short_live_stage_moves_between_prealert_breakout_and_watch():
+    source = INDEX.read_text(encoding="utf-8")
+    start = source.index("function changeClass")
+    end = source.index("function renderShortGuide", start)
+    helpers = source[start:end]
+    script = "\n".join(
+        [
+            helpers,
+            "const base={current:100.5,short_entry20:100,short_stage:'SHORT_PREALERT',short_yesterday_broke:false};",
+            "process.stdout.write(JSON.stringify({",
+            "near:classifyLiveShortStage(base,1),",
+            "broke:classifyLiveShortStage({...base,current:99.9},1),",
+            "far:classifyLiveShortStage({...base,current:102},1),",
+            "old:classifyLiveShortStage({...base,current:99.9,short_yesterday_broke:true},1)",
+            "}));",
+        ]
+    )
+    completed = subprocess.run(["node", "-e", script], check=True, capture_output=True, text=True)
+    assert json.loads(completed.stdout) == {
+        "near": "SHORT_PREALERT",
+        "broke": "SHORT_BREAKOUT",
+        "far": "SHORT_WATCH",
+        "old": "SHORT_FILTERED",
+    }
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is needed for frontend JS test")

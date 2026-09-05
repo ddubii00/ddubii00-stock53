@@ -43,8 +43,10 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS positions (
               symbol TEXT PRIMARY KEY,
               name TEXT NOT NULL DEFAULT '',
+              side TEXT NOT NULL DEFAULT 'long',
               entry_price REAL NOT NULL,
               n_at_entry REAL NOT NULL,
+              fill_prices_json TEXT NOT NULL DEFAULT '[]',
               filled_units INTEGER NOT NULL DEFAULT 0 CHECK(filled_units BETWEEN 0 AND 6),
               sizing_mode TEXT NOT NULL DEFAULT 'fixed',
               fixed_unit_amount REAL NOT NULL DEFAULT 10000000,
@@ -115,6 +117,12 @@ def init_db() -> None:
                 conn.execute(
                     "ALTER TABLE positions ADD COLUMN exit_strategy TEXT NOT NULL DEFAULT 'turtle'"
                 )
+            if "side" not in columns:
+                conn.execute("ALTER TABLE positions ADD COLUMN side TEXT NOT NULL DEFAULT 'long'")
+            if "fill_prices_json" not in columns:
+                conn.execute(
+                    "ALTER TABLE positions ADD COLUMN fill_prices_json TEXT NOT NULL DEFAULT '[]'"
+                )
             position_schema = conn.execute(
                 "SELECT sql FROM sqlite_master WHERE type='table' AND name='positions'"
             ).fetchone()
@@ -126,8 +134,10 @@ def init_db() -> None:
                     CREATE TABLE positions (
                       symbol TEXT PRIMARY KEY,
                       name TEXT NOT NULL DEFAULT '',
+                      side TEXT NOT NULL DEFAULT 'long',
                       entry_price REAL NOT NULL,
                       n_at_entry REAL NOT NULL,
+                      fill_prices_json TEXT NOT NULL DEFAULT '[]',
                       filled_units INTEGER NOT NULL DEFAULT 0 CHECK(filled_units BETWEEN 0 AND 6),
                       sizing_mode TEXT NOT NULL DEFAULT 'fixed',
                       fixed_unit_amount REAL NOT NULL DEFAULT 10000000,
@@ -139,12 +149,12 @@ def init_db() -> None:
                       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     );
                     INSERT INTO positions(
-                      symbol,name,entry_price,n_at_entry,filled_units,sizing_mode,
+                      symbol,name,side,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
                       fixed_unit_amount,account_equity,risk_pct,exit_strategy,
                       common_stop,status,updated_at
                     )
                     SELECT
-                      symbol,name,entry_price,n_at_entry,filled_units,sizing_mode,
+                      symbol,name,side,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
                       fixed_unit_amount,account_equity,risk_pct,exit_strategy,
                       common_stop,status,updated_at
                     FROM positions_units_v4;
@@ -179,14 +189,14 @@ def list_positions() -> list[dict]:
     init_db()
     with closing(connect()) as conn:
         rows = conn.execute("SELECT * FROM positions WHERE status='ACTIVE' ORDER BY symbol").fetchall()
-        return [dict(row) for row in rows]
+        return [_position_dict(row) for row in rows]
 
 
 def get_position(symbol: str) -> dict | None:
     init_db()
     with closing(connect()) as conn:
         row = conn.execute("SELECT * FROM positions WHERE symbol=?", (symbol,)).fetchone()
-        return dict(row) if row else None
+        return _position_dict(row) if row else None
 
 
 def close_position(symbol: str) -> bool:
@@ -203,9 +213,41 @@ def close_position(symbol: str) -> bool:
         return cursor.rowcount > 0
 
 
-def _derived_stop(entry_price: float, n_at_entry: float, filled_units: int) -> float:
-    latest = entry_price + max(0, filled_units - 1) * 0.5 * n_at_entry
-    return latest - 2.0 * n_at_entry
+def _position_dict(row: sqlite3.Row) -> dict:
+    result = dict(row)
+    try:
+        decoded = json.loads(str(result.pop("fill_prices_json", "[]")))
+        result["fill_prices"] = [float(value) for value in decoded]
+    except (TypeError, ValueError, json.JSONDecodeError):
+        result["fill_prices"] = []
+    return result
+
+
+def _theoretical_fill(entry_price: float, n_at_entry: float, unit_index: int, side: str) -> float:
+    direction = 1.0 if side == "long" else -1.0
+    return entry_price + direction * max(0, unit_index) * 0.5 * n_at_entry
+
+
+def _derived_stop(
+    entry_price: float,
+    n_at_entry: float,
+    filled_units: int,
+    side: str = "long",
+    fill_prices: list[float] | None = None,
+) -> float:
+    index = max(0, filled_units - 1)
+    fills = fill_prices or []
+    latest = fills[index] if index < len(fills) else _theoretical_fill(
+        entry_price, n_at_entry, index, side
+    )
+    return latest - 2.0 * n_at_entry if side == "long" else latest + 2.0 * n_at_entry
+
+
+def _merge_stop(side: str, requested: float, derived: float, existing: float = 0) -> float:
+    positive = [value for value in (requested, derived, existing) if value > 0]
+    if not positive:
+        return 0.0
+    return max(positive) if side == "long" else min(positive)
 
 
 def save_position(payload: dict) -> None:
@@ -213,36 +255,60 @@ def save_position(payload: dict) -> None:
     entry_price = float(payload["entry_price"])
     n_at_entry = float(payload["n_at_entry"])
     filled_units = int(payload.get("filled_units", 0))
+    side = str(payload.get("side", "long")).strip().lower()
+    fill_prices = [float(value) for value in payload.get("fill_prices", [])]
     if entry_price <= 0 or n_at_entry <= 0 or not 0 <= filled_units <= MAX_POSITION_UNITS:
         raise ValueError("invalid position values")
+    if side not in {"long", "short"}:
+        raise ValueError("side must be long or short")
+    if len(fill_prices) > MAX_POSITION_UNITS or any(value <= 0 for value in fill_prices):
+        raise ValueError("invalid fill prices")
+    fill_prices = fill_prices[:filled_units]
     requested_stop = float(payload.get("common_stop") or 0)
-    common_stop = max(requested_stop, _derived_stop(entry_price, n_at_entry, filled_units))
     with closing(connect()) as conn:
+        existing = conn.execute(
+            "SELECT side,common_stop FROM positions WHERE symbol=?", (payload["symbol"],)
+        ).fetchone()
+        existing_stop = (
+            float(existing["common_stop"] or 0)
+            if existing is not None and str(existing["side"]) == side
+            else 0.0
+        )
+        common_stop = _merge_stop(
+            side,
+            requested_stop,
+            _derived_stop(entry_price, n_at_entry, filled_units, side, fill_prices),
+            existing_stop,
+        )
         conn.execute(
             """
             INSERT INTO positions(
-              symbol,name,entry_price,n_at_entry,filled_units,sizing_mode,
+              symbol,name,side,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
               fixed_unit_amount,account_equity,risk_pct,exit_strategy,common_stop,status,updated_at
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',CURRENT_TIMESTAMP)
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',CURRENT_TIMESTAMP)
             ON CONFLICT(symbol) DO UPDATE SET
               name=excluded.name,
+              side=excluded.side,
               entry_price=excluded.entry_price,
               n_at_entry=excluded.n_at_entry,
+              fill_prices_json=excluded.fill_prices_json,
               filled_units=excluded.filled_units,
               sizing_mode=excluded.sizing_mode,
               fixed_unit_amount=excluded.fixed_unit_amount,
               account_equity=excluded.account_equity,
               risk_pct=excluded.risk_pct,
               exit_strategy=excluded.exit_strategy,
-              common_stop=MAX(positions.common_stop, excluded.common_stop),
+              common_stop=excluded.common_stop,
               status='ACTIVE',
               updated_at=CURRENT_TIMESTAMP
             """,
             (
                 payload["symbol"],
                 payload.get("name", ""),
+                side,
                 entry_price,
                 n_at_entry,
+                json.dumps(fill_prices),
                 filled_units,
                 payload.get("sizing_mode", "fixed"),
                 payload.get("fixed_unit_amount", 10_000_000),
@@ -255,8 +321,12 @@ def save_position(payload: dict) -> None:
         conn.commit()
 
 
-def confirm_next_fill(symbol: str) -> dict:
-    """Manually confirm one fill. Workers never call this function."""
+def confirm_fills(symbol: str, fill_prices: list[float]) -> dict:
+    """Manually confirm one or more actual fills. Workers never call this."""
+
+    new_prices = [float(value) for value in fill_prices]
+    if not new_prices or any(value <= 0 for value in new_prices):
+        raise ValueError("one or more positive actual fill prices are required")
 
     init_db()
     with closing(connect()) as conn:
@@ -269,18 +339,52 @@ def confirm_next_fill(symbol: str) -> dict:
         current_units = int(row["filled_units"])
         if current_units >= MAX_POSITION_UNITS:
             raise ValueError("all six Units are already confirmed")
-        next_units = current_units + 1
-        ratcheted_stop = max(
-            float(row["common_stop"] or 0),
-            _derived_stop(float(row["entry_price"]), float(row["n_at_entry"]), next_units),
+        if current_units + len(new_prices) > MAX_POSITION_UNITS:
+            raise ValueError("actual fills would exceed the six-Unit limit")
+        side = str(row["side"] or "long")
+        entry_price = float(row["entry_price"])
+        n_at_entry = float(row["n_at_entry"])
+        try:
+            existing_prices = [float(value) for value in json.loads(row["fill_prices_json"] or "[]")]
+        except (TypeError, ValueError, json.JSONDecodeError):
+            existing_prices = []
+        for unit_index in range(len(existing_prices), current_units):
+            existing_prices.append(
+                _theoretical_fill(entry_price, n_at_entry, unit_index, side)
+            )
+        all_prices = existing_prices[:current_units] + new_prices
+        next_units = current_units + len(new_prices)
+        if current_units == 0:
+            entry_price = new_prices[0]
+        ratcheted_stop = _merge_stop(
+            side,
+            0.0 if current_units == 0 else float(row["common_stop"] or 0),
+            _derived_stop(entry_price, n_at_entry, next_units, side, all_prices),
         )
         conn.execute(
-            "UPDATE positions SET filled_units=?, common_stop=?, updated_at=CURRENT_TIMESTAMP WHERE symbol=?",
-            (next_units, ratcheted_stop, symbol),
+            "UPDATE positions SET entry_price=?, fill_prices_json=?, filled_units=?, common_stop=?, "
+            "updated_at=CURRENT_TIMESTAMP WHERE symbol=?",
+            (entry_price, json.dumps(all_prices), next_units, ratcheted_stop, symbol),
         )
         conn.commit()
         updated = conn.execute("SELECT * FROM positions WHERE symbol=?", (symbol,)).fetchone()
-        return dict(updated)
+        return _position_dict(updated)
+
+
+def confirm_next_fill(symbol: str, fill_price: float | None = None) -> dict:
+    """Compatibility wrapper for confirming exactly one fill."""
+
+    if fill_price is None:
+        row = get_position(symbol)
+        if row is None:
+            raise KeyError(symbol)
+        fill_price = _theoretical_fill(
+            float(row["entry_price"]),
+            float(row["n_at_entry"]),
+            int(row["filled_units"]),
+            str(row.get("side", "long")),
+        )
+    return confirm_fills(symbol, [float(fill_price)])
 
 
 def event_once(event_key: str, symbol: str, signal_type: str) -> bool:

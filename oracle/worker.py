@@ -56,8 +56,9 @@ def _candidate_message(
 
 def _position_message(name: str, guide) -> str:
     condition = guide.action_price or guide.current
+    side = "LONG" if guide.side == "long" else "SHORT"
     return (
-        f"[TURTLE {guide.action}]\n"
+        f"[TURTLE {side} {guide.action}]\n"
         f"{name}\n"
         f"현재가 {fmt(guide.current)} / 조건가 {fmt(condition)}\n"
         f"다음 ADD {fmt(guide.next_add_price)} / STOP {fmt(guide.common_stop)} / EXIT {fmt(guide.exit10)}\n"
@@ -113,6 +114,8 @@ def monitor_once(
                 entry_price=position["entry_price"],
                 n_at_entry=position["n_at_entry"],
                 filled_units=position["filled_units"],
+                side=position.get("side", "long"),
+                fill_prices=position.get("fill_prices", []),
                 previous_stop=position.get("common_stop"),
                 exit_strategy=position.get("exit_strategy", "turtle"),
                 **{key: position[key] for key in sizing_keys},

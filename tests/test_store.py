@@ -33,6 +33,58 @@ def test_fill_is_only_incremented_by_explicit_confirmation(tmp_path, monkeypatch
     assert updated["common_stop"] == 282_000
 
 
+def test_multiple_actual_fills_are_persisted_and_used_for_stop(tmp_path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "actual-multiple.db"))
+    store.save_position(
+        {
+            "symbol": "000660",
+            "entry_price": 300_000,
+            "n_at_entry": 12_000,
+            "filled_units": 0,
+            "side": "long",
+        }
+    )
+    updated = store.confirm_fills("000660", [303_000, 311_000, 320_000])
+    assert updated["entry_price"] == 303_000
+    assert updated["fill_prices"] == [303_000, 311_000, 320_000]
+    assert updated["filled_units"] == 3
+    assert updated["common_stop"] == 296_000
+
+
+def test_first_actual_fill_replaces_preentry_theoretical_stop(tmp_path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "first-actual.db"))
+    store.save_position(
+        {
+            "symbol": "000660",
+            "entry_price": 300_000,
+            "n_at_entry": 12_000,
+            "filled_units": 0,
+            "side": "long",
+        }
+    )
+    updated = store.confirm_fills("000660", [295_000])
+    assert updated["entry_price"] == 295_000
+    assert updated["common_stop"] == 271_000
+
+
+def test_short_position_direction_and_actual_fills_are_persisted(tmp_path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "short.db"))
+    store.save_position(
+        {
+            "symbol": "000660",
+            "entry_price": 100_000,
+            "n_at_entry": 5_000,
+            "filled_units": 0,
+            "side": "short",
+        }
+    )
+    updated = store.confirm_fills("000660", [99_000, 96_000])
+    assert updated["side"] == "short"
+    assert updated["fill_prices"] == [99_000, 96_000]
+    assert updated["filled_units"] == 2
+    assert updated["common_stop"] == 106_000
+
+
 def test_explicit_confirmation_can_reach_six_units_but_not_seven(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "positions-six.db"))
     store.save_position(

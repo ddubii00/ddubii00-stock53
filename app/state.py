@@ -12,6 +12,7 @@ class PositionStateStore(Protocol):
     def list_active(self) -> list[dict]: ...
     def save(self, payload: dict) -> None: ...
     def confirm_next_fill(self, symbol: str) -> dict: ...
+    def confirm_fills(self, symbol: str, fill_prices: list[float]) -> dict: ...
     def close(self, symbol: str) -> bool: ...
 
 
@@ -26,6 +27,9 @@ class SqlitePositionStateStore:
 
     def confirm_next_fill(self, symbol: str) -> dict:
         return store.confirm_next_fill(symbol)
+
+    def confirm_fills(self, symbol: str, fill_prices: list[float]) -> dict:
+        return store.confirm_fills(symbol, fill_prices)
 
     def close(self, symbol: str) -> bool:
         return store.close_position(symbol)

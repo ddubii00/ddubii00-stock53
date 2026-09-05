@@ -109,12 +109,12 @@ def _worker_count(provider: MarketDataProvider) -> int:
     return max(1, min(16, int(os.getenv("FULL_SCAN_WORKERS", "8"))))
 
 
-def _eligible_stages(signal_mode: str) -> set[str]:
+def _eligible_stages(signal_mode: str) -> tuple[set[str], set[str]]:
     if signal_mode == "prealert":
-        return {"PREALERT"}
+        return {"PREALERT"}, {"SHORT_PREALERT"}
     if signal_mode == "breakout":
-        return {"BREAKOUT"}
-    return {"PREALERT", "BREAKOUT"}
+        return {"BREAKOUT"}, {"SHORT_BREAKOUT"}
+    return {"PREALERT", "BREAKOUT"}, {"SHORT_PREALERT", "SHORT_BREAKOUT"}
 
 
 def _investor_filter_passes(config: FullScanConfig, foreign: float, institution: float) -> bool:
@@ -248,7 +248,7 @@ def scan_full_market(
 
     min_avg_value20 = float(os.getenv("MIN_AVG_VALUE20", "10000000000"))
     min_score = int(os.getenv("MIN_SCORE", "55"))
-    stages = _eligible_stages(config.signal_mode)
+    long_stages, short_stages = _eligible_stages(config.signal_mode)
 
     def inspect(member: UniverseMember) -> dict | None:
         snapshot = get_market_snapshot(data, member.symbol, HISTORY_COUNT)
@@ -264,7 +264,7 @@ def scan_full_market(
             min_score=min_score,
             today_high=snapshot.quote.day_high,
         )
-        if result.stage not in stages:
+        if result.stage not in long_stages and result.short_stage not in short_stages:
             return None
         if (
             config.avg_value10_filter_enabled
@@ -338,11 +338,18 @@ def scan_full_market(
                 completed += 1
                 report("signals", completed, total, f"신호 계산 {completed:,}/{total:,}")
 
-    rank = {"BREAKOUT": 0, "PREALERT": 1}
+    rank = {"PREALERT": 0, "BREAKOUT": 1}
+    short_rank = {"SHORT_PREALERT": 0, "SHORT_BREAKOUT": 1}
     items.sort(
         key=lambda item: (
-            rank.get(item.get("stage", "PREALERT"), 9),
-            float(item.get("distance_pct", 999)),
+            min(
+                rank.get(item.get("stage", ""), 9),
+                short_rank.get(item.get("short_stage", ""), 9),
+            ),
+            min(
+                abs(float(item.get("distance_pct", 999))),
+                abs(float(item.get("short_distance_pct", 999))),
+            ),
             -int(item.get("score", 0)),
         )
     )
