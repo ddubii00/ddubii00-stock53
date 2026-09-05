@@ -161,10 +161,18 @@ def test_investor_flow_is_split_and_labeled_with_its_basis_date():
 def test_candidate_table_shows_atr_and_current_state_badges():
     source = INDEX.read_text(encoding="utf-8")
     assert source.count('data-sort="atr20">ATR20(N)') == 3
+    assert "fmt(item.atr20)" in source
     assert "장중 돌파 후 하회" in source
     assert "접근범위 이탈" in source
     assert "if(current>=target)return 'BREAKOUT'" in source
     assert "todayHigh>=target" in source
+
+
+def test_oracle_labels_naver_as_kis_fallback():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "function marketSourceText(item)" in source
+    assert "NAVER · KIS대체" in source
+    assert "kisConfigured=Boolean(data.kis_configured)" in source
 
 
 def test_candidate_click_is_kept_in_the_tracking_list_with_market_details():

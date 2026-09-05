@@ -5,6 +5,7 @@ import pytest
 
 from app.providers import (
     FallbackMarketDataProvider,
+    KisMarketDataProvider,
     MarketSnapshot,
     NaverMarketDataProvider,
     Quote,
@@ -82,6 +83,45 @@ class InvestorSession:
                 }
             ]
         )
+
+
+class KisRetrySession:
+    def __init__(self):
+        self.calls = 0
+
+    def get(self, *args, **kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            return JsonResponse({"rt_cd": "1", "msg_cd": "EGW00201", "msg1": "temporary limit"})
+        return JsonResponse(
+            {
+                "rt_cd": "0",
+                "output": {
+                    "stck_prpr": "337000",
+                    "acml_vol": "222733",
+                    "stck_hgpr": "345000",
+                    "prdy_ctrt": "-1.46",
+                },
+            }
+        )
+
+
+def test_kis_retries_api_error_before_fallback(monkeypatch):
+    monkeypatch.setenv("KIS_APP_KEY", "test-key")
+    monkeypatch.setenv("KIS_APP_SECRET", "test-secret")
+    monkeypatch.setenv("KIS_RETRY_ATTEMPTS", "2")
+    monkeypatch.setenv("KIS_RETRY_BACKOFF_SECONDS", "0")
+    provider = KisMarketDataProvider()
+    session = KisRetrySession()
+    provider.session = session
+    provider._token = "cached-test-token"
+    provider._token_expiry = 9_999_999_999
+
+    quote = provider.get_current_price("005490")
+
+    assert session.calls == 2
+    assert quote.source == "kis"
+    assert quote.price == 337_000
 
 
 def test_naver_quote_prefers_open_nxt_session_price(monkeypatch):

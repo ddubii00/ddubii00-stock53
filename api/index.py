@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SYMBOL_RE = re.compile(r"^[0-9A-Z]{6}$")
 HISTORY_COUNT = max(120, int(os.getenv("HISTORY_COUNT", "260")))
 
-app = FastAPI(title="Turtle Signal Guide", version="0.8.0")
+app = FastAPI(title="Turtle Signal Guide", version="0.8.1")
 
 DEFAULT_SYMBOLS = {
     "000660": "SK하이닉스",
@@ -108,7 +108,10 @@ def _provider(mode: str):
 
 @app.get("/", include_in_schema=False)
 def home():
-    return FileResponse(ROOT / "index.html")
+    return FileResponse(
+        ROOT / "index.html",
+        headers={"Cache-Control": "no-store, max-age=0", "Pragma": "no-cache"},
+    )
 
 
 @app.get("/api/health")
@@ -118,7 +121,7 @@ def health():
     app_mode = os.getenv("APP_MODE", "vercel")
     return {
         "ok": True,
-        "version": "0.8.0",
+        "version": "0.8.1",
         "app_mode": app_mode,
         "provider_mode": mode,
         "provider_chain": getattr(provider, "name", provider.__class__.__name__),

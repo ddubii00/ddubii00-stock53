@@ -18,7 +18,10 @@
     },
     {
       "src": "/",
-      "dest": "index.html"
+      "dest": "index.html",
+      "headers": {
+        "Cache-Control": "no-store, max-age=0"
+      }
     }
   ]
 }

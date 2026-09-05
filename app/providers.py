@@ -421,20 +421,24 @@ class KisMarketDataProvider:
         self.session = requests.Session()
         self._token = ""
         self._token_expiry = 0.0
+        self._token_lock = threading.Lock()
 
     def _access_token(self) -> str:
         if self._token and time.time() < self._token_expiry - 60:
             return self._token
-        response = self.session.post(
-            f"{self.base_url}/oauth2/tokenP",
-            json={"grant_type": "client_credentials", "appkey": self.app_key, "appsecret": self.app_secret},
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        self._token = payload["access_token"]
-        self._token_expiry = time.time() + int(payload.get("expires_in", 3600))
-        return self._token
+        with self._token_lock:
+            if self._token and time.time() < self._token_expiry - 60:
+                return self._token
+            response = self.session.post(
+                f"{self.base_url}/oauth2/tokenP",
+                json={"grant_type": "client_credentials", "appkey": self.app_key, "appsecret": self.app_secret},
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            self._token = payload["access_token"]
+            self._token_expiry = time.time() + int(payload.get("expires_in", 3600))
+            return self._token
 
     def _headers(self, tr_id: str) -> dict[str, str]:
         return {
@@ -445,17 +449,53 @@ class KisMarketDataProvider:
             "custtype": "P",
         }
 
+    def _get_json(self, path: str, tr_id: str, params: dict[str, str], label: str) -> dict:
+        """Retry transient KIS failures before allowing the fallback chain to run."""
+
+        try:
+            attempts = max(1, min(5, int(os.getenv("KIS_RETRY_ATTEMPTS", "3"))))
+        except ValueError:
+            attempts = 3
+        try:
+            backoff = max(0.0, float(os.getenv("KIS_RETRY_BACKOFF_SECONDS", "0.25")))
+        except ValueError:
+            backoff = 0.25
+        last_error: Exception | None = None
+        for attempt in range(attempts):
+            try:
+                response = self.session.get(
+                    f"{self.base_url}{path}",
+                    headers=self._headers(tr_id),
+                    params=params,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                payload = response.json()
+                if str(payload.get("rt_cd", "0")) == "0":
+                    return payload
+                code = str(payload.get("msg_cd") or "KIS_ERROR")
+                message = str(payload.get("msg1") or label)
+                raise RuntimeError(f"{label}: {message} ({code})")
+            except Exception as exc:
+                last_error = exc
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                if status in {401, 403}:
+                    with self._token_lock:
+                        self._token = ""
+                        self._token_expiry = 0.0
+                if attempt + 1 >= attempts:
+                    raise
+                if backoff:
+                    time.sleep(backoff * (2**attempt))
+        raise RuntimeError(f"{label}: {last_error}")
+
     def get_current_price(self, symbol: str) -> Quote:
-        response = self.session.get(
-            f"{self.base_url}/uapi/domestic-stock/v1/quotations/inquire-price",
-            headers=self._headers("FHKST01010100"),
-            params={"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
-            timeout=self.timeout,
+        payload = self._get_json(
+            "/uapi/domestic-stock/v1/quotations/inquire-price",
+            "FHKST01010100",
+            {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
+            "KIS quote error",
         )
-        response.raise_for_status()
-        payload = response.json()
-        if str(payload.get("rt_cd", "0")) != "0":
-            raise RuntimeError(payload.get("msg1", "KIS quote error"))
         out = payload.get("output") or {}
         return Quote(
             symbol=symbol,
@@ -469,10 +509,10 @@ class KisMarketDataProvider:
     def get_daily_ohlcv(self, symbol: str, count: int = 260) -> list[Bar]:
         end = _today_kst_date()
         start = end - timedelta(days=max(550, count * 2))
-        response = self.session.get(
-            f"{self.base_url}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
-            headers=self._headers("FHKST03010100"),
-            params={
+        payload = self._get_json(
+            "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
+            "FHKST03010100",
+            {
                 "FID_COND_MRKT_DIV_CODE": "J",
                 "FID_INPUT_ISCD": symbol,
                 "FID_INPUT_DATE_1": start.strftime("%Y%m%d"),
@@ -480,12 +520,8 @@ class KisMarketDataProvider:
                 "FID_PERIOD_DIV_CODE": "D",
                 "FID_ORG_ADJ_PRC": "0",
             },
-            timeout=self.timeout,
+            "KIS daily chart error",
         )
-        response.raise_for_status()
-        payload = response.json()
-        if str(payload.get("rt_cd", "0")) != "0":
-            raise RuntimeError(payload.get("msg1", "KIS daily chart error"))
         parsed: list[tuple[str, Bar]] = []
         for row in payload.get("output2") or []:
             try:
@@ -514,16 +550,12 @@ class KisMarketDataProvider:
         return bars
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
-        response = self.session.get(
-            f"{self.base_url}/uapi/domestic-stock/v1/quotations/inquire-investor",
-            headers=self._headers("FHKST01010900"),
-            params={"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
-            timeout=self.timeout,
+        payload = self._get_json(
+            "/uapi/domestic-stock/v1/quotations/inquire-investor",
+            "FHKST01010900",
+            {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
+            "KIS investor flow error",
         )
-        response.raise_for_status()
-        payload = response.json()
-        if str(payload.get("rt_cd", "0")) != "0":
-            raise RuntimeError(payload.get("msg1", "KIS investor flow error"))
         rows = payload.get("output") or []
         if not rows:
             raise RuntimeError(f"KIS returned no investor flow for {symbol}")

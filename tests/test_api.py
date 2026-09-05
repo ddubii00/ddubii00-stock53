@@ -16,13 +16,17 @@ def test_vercel_fastapi_entrypoint_is_explicit():
     deployment = json.loads(Path("vercel.json").read_text(encoding="utf-8"))
     assert {build["src"] for build in deployment["builds"]} == {"api/index.py", "index.html"}
     assert deployment["routes"][0] == {"src": "/api/(.*)", "dest": "api/index.py"}
+    assert deployment["routes"][1]["headers"]["Cache-Control"] == "no-store, max-age=0"
 
 
 def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     monkeypatch.delenv("KIS_APP_KEY", raising=False)
     monkeypatch.delenv("KIS_APP_SECRET", raising=False)
     monkeypatch.delenv("REALTIME_POLL_SECONDS", raising=False)
-    assert client.get("/").status_code == 200
+    home = client.get("/")
+    assert home.status_code == 200
+    assert home.headers["cache-control"] == "no-store, max-age=0"
+    assert home.headers["pragma"] == "no-cache"
     health = client.get("/api/health")
     assert health.status_code == 200
     assert health.json()["kis_configured"] is False

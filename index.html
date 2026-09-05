@@ -65,7 +65,7 @@
     <div id="scanProgress" class="muted tiny scanProgress" aria-live="polite">저장된 결과를 조회하거나 전체시장 새 검색을 눌러주세요.</div>
     <div class="notice" style="margin:10px 0 0"><b>버튼 차이:</b> <b>↻ 새로고침</b>은 마지막 후보 결과와 선택 종목 시세를 한 번 다시 조회합니다. <b>전체시장 새 검색</b>은 누른 시점에 KOSPI·KOSDAQ 전체를 수동으로 한 번 계산합니다. 그 옆 <b>실시간</b>은 수동 검색에서 찾은 종목만 30초마다 다시 판정하고 시세는 더 짧은 주기로 갱신합니다. 전체시장·재무정보를 반복 검색하지 않습니다.</div>
   </section>
-  <div class="notice"><b>신호:</b> PREALERT는 현재가가 직전 20일 High 아래 설정 범위에 접근한 종목입니다. BREAKOUT은 어제까지 돌파하지 않았고 <b>현재가가 직전 20일 High 이상인 종목</b>입니다. 장중 돌파 후 현재가가 내려오면 PREALERT 또는 범위 이탈 추적으로 이동하며 배지로 표시합니다. 추가 필터를 통과하지 못한 종목은 신규 검색 결과에 표시하지 않습니다. <b>외인·기관 수급은 장 종료 후 확정</b>되므로 장중에는 가장 최근 완료 거래일 값과 기준일을 표시합니다. Naver 금액은 순매수수량×종가의 추정값입니다.</div>
+  <div class="notice"><b>신호:</b> PREALERT는 현재가가 직전 20일 High 아래 설정 범위에 접근한 종목입니다. BREAKOUT은 어제까지 돌파하지 않았고 <b>현재가가 직전 20일 High 이상인 종목</b>입니다. 장중 돌파 후 현재가가 내려오면 PREALERT 또는 범위 이탈 추적으로 이동하며 배지로 표시합니다. 추가 필터를 통과하지 못한 종목은 신규 검색 결과에 표시하지 않습니다. 표의 <b>ATR20(N)</b>은 20일 평균 진폭 금액과 현재가 대비 ATR%를 함께 표시합니다. Oracle의 AUTO는 KIS를 먼저 조회하며, `NAVER · KIS대체`는 해당 KIS 요청을 재시도한 뒤에도 실패하여 Naver로 보완했다는 뜻입니다. <b>외인·기관 수급은 장 종료 후 확정</b>되므로 장중에는 가장 최근 완료 거래일 값과 기준일을 표시합니다. Naver 금액은 순매수수량×종가의 추정값입니다.</div>
   <section class="signalSection"><h3 class="signalSectionTitle yellow">PREALERT <span id="prealertCount" class="countBadge">0개</span></h3><div class="tableWrap">
     <table>
       <thead><tr><th><button class="sortButton" data-sort="stage">상태</button></th><th><button class="sortButton" data-sort="name">종목</button></th><th><button class="sortButton" data-sort="market">시장</button></th><th><button class="sortButton" data-sort="asset_type">유형</button></th><th><button class="sortButton" data-sort="market_cap_100m">시총(억)</button></th><th><button class="sortButton" data-sort="operating_profit_100m">영업이익(억)</button></th><th><button class="sortButton" data-sort="avg_value10">10D거래대금(억)</button></th><th><button class="sortButton" data-sort="today_change_pct">당일%</button></th><th><button class="sortButton" data-sort="foreign_net_buy_100m">외인(억)</button></th><th><button class="sortButton" data-sort="institution_net_buy_100m">기관(억)</button></th><th>수급 기준</th><th><button class="sortButton" data-sort="current">현재가</button></th><th><button class="sortButton" data-sort="breakout20">20D 돌파가</button></th><th><button class="sortButton" data-sort="distance_pct">목표대비 거리</button></th><th><button class="sortButton" data-sort="atr20">ATR20(N)</button></th><th><button class="sortButton" data-sort="score">Quality</button></th><th><button class="sortButton" data-sort="source">Source</button></th></tr></thead>
@@ -150,7 +150,7 @@ const pct=n=>Number.isFinite(Number(n))?Number(n).toFixed(2)+'%':'-';
 const eok=n=>Number.isFinite(Number(n))?(Number(n)/100000000).toFixed(1)+'억':'-';
 const num=id=>Number(document.getElementById(id).value||0);
 const el=id=>document.getElementById(id);
-let selected=null,lastGuide=null,realtimeTimer=null,quoteTimer=null,cycleBusy=false,quoteBusy=false,investorHydrationBusy=false,fullScanBusy=false,realtimeMs=30000,quoteMs=3000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false,manualFullScanSupported=false,healthLoaded=false,trackingName='',appMode='vercel';
+let selected=null,lastGuide=null,realtimeTimer=null,quoteTimer=null,cycleBusy=false,quoteBusy=false,investorHydrationBusy=false,fullScanBusy=false,realtimeMs=30000,quoteMs=3000,lastScanId=Number(localStorage.getItem(SCAN_ID_KEY)||0)||null,fullScanSupported=false,manualFullScanSupported=false,healthLoaded=false,kisConfigured=false,trackingName='',appMode='vercel';
 let signalMode='actionable',candidateItems=[],liveSeedItems=[],candidateNote='',sortState={key:'market_cap_100m',direction:'desc'};
 const activeFilters={avgValue10:true,investor:false,todayChange:false};
 
@@ -231,7 +231,7 @@ function updateScanVisibility(){
 
 function showCandidate(data,{populateTracking=true,persistSelection=false}={}){
   selected=data;
-  const symbolBox=el('symbol');symbolBox.replaceChildren();const detailLink=stockAnchor(data);symbolBox.appendChild(detailLink);if(data.source)symbolBox.append(' · '+data.source.toUpperCase());
+  const symbolBox=el('symbol');symbolBox.replaceChildren();const detailLink=stockAnchor(data);symbolBox.appendChild(detailLink);if(data.source)symbolBox.append(' · '+marketSourceText(data));
   el('stage').textContent=data.stage||'-';el('stage').className='big '+stageClass(data.stage);
   const targetDistance=targetDistancePct(data),distanceBox=el('distance');distanceBox.className=changeClass(targetDistance);distanceBox.textContent=data.yesterday_broke?'어제 이미 돌파하여 신규 Unit #1에서 제외됩니다.':`20D 목표가 대비 ${signedPct(targetDistance)} · ${data.stage==='BREAKOUT'?'현재가 돌파':data.intraday_broke?'장중 돌파 후 현재가 하회':'현재가가 목표가 아래'}`;
   el('current').textContent=fmt(data.current)+(Number.isFinite(Number(data.today_high))?' / '+fmt(data.today_high):'');el('entry').textContent=fmt(data.breakout20);el('atr').textContent=fmt(data.atr20);el('exit10').textContent=fmt(data.exit10);
@@ -263,6 +263,11 @@ function flowBasisText(item){
   if(item.investor_date)return `${flowDateText(item.investor_date)} ${item.investor_amount_estimated?'추정':'확정'}${item.investor_source?' · '+String(item.investor_source).toUpperCase():''}`;
   return item.investor_error?'수급 조회 실패 · 재시도':'장 종료 후 확정';
 }
+function marketSourceText(item){
+  const source=String(item?.source||'').toLowerCase();
+  if(source==='naver'&&appMode==='oracle'&&kisConfigured&&el('provider').value==='auto')return 'NAVER · KIS대체';
+  return source.toUpperCase()||'-';
+}
 async function hydrateInvestorFlows(items=candidateItems){
   if(investorHydrationBusy)return;
   const missing=(items||[]).filter(item=>item.stage!=='ERROR'&&item.asset_type!=='ETF'&&(item.foreign_net_buy_100m==null||item.institution_net_buy_100m==null));
@@ -293,7 +298,7 @@ function appendCandidateRow(body,item){
       {text:item.asset_type==='ETF'?'면제':Number.isFinite(Number(item.operating_profit_100m))?Math.round(Number(item.operating_profit_100m)).toLocaleString('ko-KR'):'-'},
       {text:Number.isFinite(Number(item.avg_value10))?(Number(item.avg_value10)/100000000).toFixed(1):'-'},{text:pct(item.today_change_pct),cls:changeClass(item.today_change_pct)},
       {text:flowAmountText(item,'foreign_net_buy_100m'),cls:changeClass(item.foreign_net_buy_100m)},{text:flowAmountText(item,'institution_net_buy_100m'),cls:changeClass(item.institution_net_buy_100m)},{text:flowBasisText(item)},
-      {text:fmt(item.current)},{text:fmt(item.breakout20)},{text:signedPct(targetDistancePct(item)),cls:changeClass(targetDistancePct(item))},{text:fmt(item.atr20)+(Number.isFinite(Number(item.atr_pct))?' · '+pct(item.atr_pct):'')},{text:String(item.score??'-')},{text:(item.source||'').toUpperCase()}
+      {text:fmt(item.current)},{text:fmt(item.breakout20)},{text:signedPct(targetDistancePct(item)),cls:changeClass(targetDistancePct(item))},{text:fmt(item.atr20)+(Number.isFinite(Number(item.atr_pct))?' · '+pct(item.atr_pct):'')},{text:String(item.score??'-')},{text:marketSourceText(item)}
     ];
   values.forEach(value=>{const cell=document.createElement('td');cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;if(value.stockLink)cell.appendChild(stockAnchor(item));else if(value.stageItem){const label=document.createElement('span');label.className='stage '+stageClass(item.stage);label.textContent=item.stage;cell.appendChild(label);candidateStatusBadges(item).forEach(badge=>{const node=document.createElement('span');node.className='stateBadge '+badge.cls;node.textContent=badge.text;cell.appendChild(node)})}else cell.textContent=value.text;row.appendChild(cell)});
   if(item.stage!=='ERROR')row.addEventListener('click',()=>showCandidate(item,{persistSelection:true}));body.appendChild(row);
@@ -561,7 +566,7 @@ el('scanScope').addEventListener('change',()=>{updateScanVisibility();loadCandid
 el('prealertPct').addEventListener('input',renderPrealertPct);el('gSymbol').addEventListener('input',()=>{if(el('gSymbol').value.trim()!==selected?.symbol)trackingName='';renderTrackingName()});
 el('guideBtn').addEventListener('click',()=>calculateGuide(true).catch(()=>{}));el('saveBtn').addEventListener('click',()=>saveTracking().catch(error=>alert(error.message)));el('confirmFillBtn').addEventListener('click',()=>confirmFill().catch(error=>alert(error.message)));el('clearBtn').addEventListener('click',()=>clearTracking().catch(error=>alert(error.message)));el('sizingMode').addEventListener('change',updateSizingVisibility);el('totalInvestment').addEventListener('input',syncUnitAmount);el('exitStrategy').addEventListener('change',()=>calculateGuide(false).catch(()=>{}));
 restoreTracking();
-fetchJson('/api/health').then(result=>result.data).then(async data=>{fullScanSupported=Boolean(data.full_market_scan_supported);manualFullScanSupported=Boolean(data.manual_full_market_scan_supported);appMode=data.app_mode||'vercel';healthLoaded=true;el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';const pollSeconds=Math.max(3,Number(data.realtime_poll_seconds||30)),quoteSeconds=Math.max(2,Number(data.quote_poll_seconds||3));realtimeMs=pollSeconds*1000;quoteMs=quoteSeconds*1000;el('pollInterval').textContent=`후보 ${pollSeconds}초 · 시세 ${quoteSeconds}초`;if(!fullScanSupported&&manualFullScanSupported&&!localStorage.getItem(MANUAL_MODE_KEY)){el('scanScope').value='all';localStorage.setItem(MANUAL_MODE_KEY,'1')}updateScanVisibility();await loadOraclePositions();if(!fullScanSupported&&el('scanScope').value==='all')el('scanProgress').textContent='Vercel 모드: 전체시장 새 검색은 수동 1회 실행하며, 이후 실시간 버튼은 그 결과 종목만 브라우저 polling으로 추적합니다.';await loadCandidates()}).catch(error=>{el('health').textContent='API 미연결';el('scanProgress').textContent='API 연결 실패: '+error.message+' · 배포 경로와 FastAPI/Nginx 연결을 확인하세요.'});
+fetchJson('/api/health').then(result=>result.data).then(async data=>{fullScanSupported=Boolean(data.full_market_scan_supported);manualFullScanSupported=Boolean(data.manual_full_market_scan_supported);appMode=data.app_mode||'vercel';kisConfigured=Boolean(data.kis_configured);healthLoaded=true;el('health').textContent=data.ok?'API · '+data.provider_chain.toUpperCase():'API 오류';const pollSeconds=Math.max(3,Number(data.realtime_poll_seconds||30)),quoteSeconds=Math.max(2,Number(data.quote_poll_seconds||3));realtimeMs=pollSeconds*1000;quoteMs=quoteSeconds*1000;el('pollInterval').textContent=`후보 ${pollSeconds}초 · 시세 ${quoteSeconds}초`;if(!fullScanSupported&&manualFullScanSupported&&!localStorage.getItem(MANUAL_MODE_KEY)){el('scanScope').value='all';localStorage.setItem(MANUAL_MODE_KEY,'1')}updateScanVisibility();await loadOraclePositions();if(!fullScanSupported&&el('scanScope').value==='all')el('scanProgress').textContent='Vercel 모드: 전체시장 새 검색은 수동 1회 실행하며, 이후 실시간 버튼은 그 결과 종목만 브라우저 polling으로 추적합니다.';await loadCandidates()}).catch(error=>{el('health').textContent='API 미연결';el('scanProgress').textContent='API 연결 실패: '+error.message+' · 배포 경로와 FastAPI/Nginx 연결을 확인하세요.'});
 </script>
 </body>
 </html>

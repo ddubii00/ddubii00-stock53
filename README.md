@@ -54,7 +54,7 @@ risk 방식은 개인용 보수적 가이드이며 원조 futures contract sizin
 `DATA_PROVIDER=auto` 정책:
 
 ```text
-KIS credentials 있음: KIS → Naver → optional KRX → Demo
+KIS credentials 있음: KIS(일시 오류 기본 3회 재시도) → Naver → optional KRX → Demo
 KIS credentials 없음: Naver → optional KRX → Demo
 ```
 
@@ -68,7 +68,7 @@ fallback은 일봉과 현재가를 같은 provider에서 성공시킨 뒤 하나
 - `KisMarketDataProvider`: Oracle 실전 신호 우선 REST 데이터
 - `FallbackMarketDataProvider`: 동일 provider snapshot 단위 fallback
 
-Naver/KRX는 탐색·테스트용입니다. 실전 Oracle 판단은 KIS를 기준으로 운영하세요.
+Naver/KRX는 탐색·테스트와 KIS 장애 시 보완용입니다. 실전 Oracle 판단은 KIS를 기준으로 운영하세요. Oracle AUTO에서 KIS 요청이 재시도 후에도 실패해 Naver를 사용한 후보는 표에 `NAVER · KIS대체`로 표시합니다.
 
 Naver 현재가는 정규장 live quote를 사용하고, NXT 프리/애프터마켓 세션이 실제 거래 중이면 NXT 체결가를 우선합니다. 과거 DEMO로 저장된 추적 설정은 화면 재접속 시 AUTO 실제 시세로 전환하며, 사용자가 입력해야 하는 Entry 체결가와 ATR은 임의로 바꾸지 않습니다.
 
