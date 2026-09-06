@@ -312,6 +312,8 @@ def scan_full_market(
             today_high=snapshot.quote.day_high,
             today_change_pct=today_change_pct,
             source=snapshot.quote.source,
+            signal_date=snapshot.as_of_date,
+            latest_completed_session=snapshot.latest_completed_session,
             investor_date=flow.date if flow else None,
             foreign_net_buy_100m=(flow.foreign_net_amount / 100_000_000) if flow else None,
             institution_net_buy_100m=(flow.institution_net_amount / 100_000_000) if flow else None,
@@ -353,6 +355,7 @@ def scan_full_market(
             -int(item.get("score", 0)),
         )
     )
+    signal_dates = [str(item.get("signal_date")) for item in items if item.get("signal_date")]
     summary = {
         "processed": completed,
         "total": total,
@@ -366,6 +369,10 @@ def scan_full_market(
         "stock_fundamentals_passed": stock_fundamentals_passed,
         "etf_scanned": etf_scanned,
         "error_count": errors,
+        "signal_date": max(signal_dates) if signal_dates else None,
+        "latest_completed_session": any(
+            bool(item.get("latest_completed_session")) for item in items
+        ),
         "message": (
             (
                 f"일반주식 {stock_count:,}개 + ETF {etf_count:,}개(ETN 제외) "

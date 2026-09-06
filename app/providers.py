@@ -4,7 +4,7 @@ import os
 import threading
 import time
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Protocol
 from zoneinfo import ZoneInfo
@@ -27,12 +27,15 @@ class Quote:
     source: str = ""
     day_high: float | None = None
     change_pct: float | None = None
+    date: str = ""
 
 
 @dataclass(frozen=True)
 class MarketSnapshot:
     bars: list[Bar]
     quote: Quote
+    as_of_date: str = ""
+    latest_completed_session: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,6 +73,55 @@ def _completed(bars: list[Bar], count: int) -> list[Bar]:
     return [bar for bar in bars if not bar.date or bar.date != today][-count:]
 
 
+def _session_date(value: object) -> str:
+    """Normalize a provider trading-date value to YYYYMMDD when possible."""
+
+    digits = "".join(character for character in str(value or "") if character.isdigit())
+    if len(digits) < 8:
+        return ""
+    candidate = digits[:8]
+    try:
+        datetime.strptime(candidate, "%Y%m%d")
+    except ValueError:
+        return ""
+    return candidate
+
+
+def _align_snapshot_to_trading_session(
+    snapshot: MarketSnapshot, count: int
+) -> MarketSnapshot:
+    """Use the latest open session as D when the current date is closed.
+
+    Provider daily endpoints commonly return the latest completed candle on a
+    weekend or exchange holiday, while their quote endpoint returns that same
+    session's close. The strategy treats the quote as D, so the matching daily
+    candle must be removed from D-1 history to avoid counting it twice.
+    """
+
+    today = _today_kst()
+    quote_date = _session_date(snapshot.quote.date)
+    bars = list(snapshot.bars)
+    latest_completed_session = bool(quote_date and quote_date < today)
+
+    as_of_date = quote_date or today
+    if quote_date:
+        bars = [
+            bar
+            for bar in bars
+            if not _session_date(bar.date) or _session_date(bar.date) < quote_date
+        ]
+
+    quote = snapshot.quote
+    if quote_date and quote.date != quote_date:
+        quote = replace(quote, date=quote_date)
+    return MarketSnapshot(
+        bars=bars[-count:],
+        quote=quote,
+        as_of_date=as_of_date,
+        latest_completed_session=latest_completed_session,
+    )
+
+
 def _number(value: object) -> float:
     return float(str(value or "0").replace(",", ""))
 
@@ -79,10 +131,13 @@ def get_market_snapshot(provider: MarketDataProvider, symbol: str, count: int = 
 
     method = getattr(provider, "get_snapshot", None)
     if callable(method):
-        return method(symbol, count)
-    bars = provider.get_daily_ohlcv(symbol, count)
+        snapshot = method(symbol, count + 1)
+        return _align_snapshot_to_trading_session(snapshot, count)
+    bars = provider.get_daily_ohlcv(symbol, count + 1)
     quote = provider.get_current_price(symbol)
-    return MarketSnapshot(bars=bars, quote=quote)
+    return _align_snapshot_to_trading_session(
+        MarketSnapshot(bars=bars, quote=quote), count
+    )
 
 
 def validate_snapshot_price_scale(
@@ -173,6 +228,7 @@ class DemoMarketDataProvider:
             source=self.name,
             day_high=price,
             change_pct=(price / bars[-1].close - 1.0) * 100.0,
+            date=bars[-1].date,
         )
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
@@ -251,6 +307,12 @@ class NaverMarketDataProvider:
             bars.append(
                 Bar(high=h, low=low_value, close=c, volume=v, value=v * c, date=session_date)
             )
+        if bars:
+            session_dates = getattr(self._local, "session_dates", None)
+            if session_dates is None:
+                session_dates = {}
+                self._local.session_dates = session_dates
+            session_dates[symbol] = bars[-1].date
         bars = _completed(bars, count)
         if len(bars) < 61:
             raise RuntimeError(f"Naver returned only {len(bars)} completed daily bars for {symbol}")
@@ -291,6 +353,18 @@ class NaverMarketDataProvider:
             raise RuntimeError(f"Unexpected Naver quote response for {symbol}") from exc
         if price <= 0:
             raise RuntimeError(f"Naver returned an invalid quote for {symbol}")
+        explicit_date = _session_date(
+            row.get("localTradedAt")
+            or row.get("tradeDate")
+            or row.get("bizdate")
+            or row.get("dt")
+        )
+        market_status = str(row.get("ms") or row.get("marketStatus") or "").upper()
+        quote_date = (
+            explicit_date
+            or (_today_kst() if market_status == "OPEN" or nxt_trading else "")
+            or getattr(self._local, "session_dates", {}).get(symbol, "")
+        )
         return Quote(
             symbol=symbol,
             price=price,
@@ -298,6 +372,7 @@ class NaverMarketDataProvider:
             source=self.name,
             day_high=day_high,
             change_pct=change_pct,
+            date=quote_date,
         )
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
@@ -371,6 +446,12 @@ class KrxMarketDataProvider:
         if frame.empty:
             raise RuntimeError(f"KRX returned no quote for {symbol}")
         row = frame.iloc[-1]
+        index = frame.index[-1]
+        session_date = (
+            index.strftime("%Y%m%d")
+            if hasattr(index, "strftime")
+            else _session_date(index)
+        )
         previous_close = _number(frame.iloc[-2]["종가"]) if len(frame) >= 2 else 0.0
         price = _number(row["종가"])
         return Quote(
@@ -380,6 +461,7 @@ class KrxMarketDataProvider:
             source=self.name,
             day_high=_number(row["고가"]),
             change_pct=(price / previous_close - 1.0) * 100.0 if previous_close > 0 else None,
+            date=session_date,
         )
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
@@ -422,6 +504,8 @@ class KisMarketDataProvider:
         self._token = ""
         self._token_expiry = 0.0
         self._token_lock = threading.Lock()
+        self._session_date_lock = threading.Lock()
+        self._session_dates: dict[str, str] = {}
 
     def _access_token(self) -> str:
         if self._token and time.time() < self._token_expiry - 60:
@@ -497,6 +581,19 @@ class KisMarketDataProvider:
             "KIS quote error",
         )
         out = payload.get("output") or {}
+        with self._session_date_lock:
+            remembered_date = self._session_dates.get(symbol, "")
+        market_code = str(out.get("new_mkop_cls_code") or "").strip()
+        quote_date = (
+            _session_date(out.get("stck_bsop_date"))
+            or (
+                _today_kst()
+                if _today_kst_date().weekday() < 5
+                and market_code in {"10", "20", "30", "40", "51", "52"}
+                else ""
+            )
+            or remembered_date
+        )
         return Quote(
             symbol=symbol,
             price=_number(out.get("stck_prpr")),
@@ -504,6 +601,7 @@ class KisMarketDataProvider:
             source=self.name,
             day_high=_number(out.get("stck_hgpr")),
             change_pct=_number(out.get("prdy_ctrt")),
+            date=quote_date,
         )
 
     def get_daily_ohlcv(self, symbol: str, count: int = 260) -> list[Bar]:
@@ -542,6 +640,9 @@ class KisMarketDataProvider:
             except (TypeError, ValueError):
                 continue
         parsed.sort(key=lambda item: item[0])
+        if parsed:
+            with self._session_date_lock:
+                self._session_dates[symbol] = parsed[-1][0]
         bars = _completed([bar for _, bar in parsed], count)
         if len(bars) < 61:
             raise RuntimeError(

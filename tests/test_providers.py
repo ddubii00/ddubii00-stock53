@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -13,7 +13,7 @@ from app.providers import (
     get_market_snapshot,
     validate_snapshot_price_scale,
 )
-from app.strategy import Bar
+from app.strategy import Bar, analyze
 
 
 class BrokenQuoteProvider:
@@ -50,6 +50,68 @@ def test_provider_removes_todays_partial_daily_bar():
     completed = _completed(bars, 10)
     assert len(completed) == 1
     assert completed[0].date == "20260828"
+
+
+class HolidaySessionProvider:
+    name = "holiday-test"
+
+    def get_daily_ohlcv(self, symbol, count=260):
+        bars = []
+        for index in range(61):
+            session_date = (date(2026, 6, 1) + timedelta(days=index)).strftime("%Y%m%d")
+            bars.append(
+                Bar(
+                    high=100,
+                    low=90,
+                    close=95,
+                    volume=1_000,
+                    value=95_000,
+                    date=session_date,
+                )
+            )
+        bars.append(
+            Bar(
+                high=120,
+                low=94,
+                close=101,
+                volume=2_000,
+                value=202_000,
+                date="20260904",
+            )
+        )
+        return bars[-count:]
+
+    def get_current_price(self, symbol):
+        return Quote(
+            symbol=symbol,
+            price=101,
+            volume=2_000,
+            source=self.name,
+            day_high=120,
+            date="20260904",
+        )
+
+
+def test_holiday_snapshot_uses_latest_open_session_without_lookahead(monkeypatch):
+    monkeypatch.setattr("app.providers._today_kst", lambda: "20260906")
+    snapshot = get_market_snapshot(HolidaySessionProvider(), "005930", 61)
+
+    assert snapshot.as_of_date == "20260904"
+    assert snapshot.latest_completed_session is True
+    assert len(snapshot.bars) == 61
+    assert all(bar.date != "20260904" for bar in snapshot.bars)
+    assert max(bar.high for bar in snapshot.bars[-20:]) == 100
+
+    result = analyze(
+        snapshot.bars,
+        current=snapshot.quote.price,
+        current_volume=snapshot.quote.volume,
+        today_high=snapshot.quote.day_high,
+        min_avg_value20=0,
+        min_score=0,
+    )
+    assert result.stage == "BREAKOUT"
+    assert result.breakout20 == 100
 
 
 class JsonResponse:

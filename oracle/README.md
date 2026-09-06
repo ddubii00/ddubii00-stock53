@@ -48,6 +48,8 @@ DB_PATH=./data/turtle.db
 
 `DATA_PROVIDER=auto`에서 KIS 키가 있으면 KIS가 가장 먼저 사용됩니다. 실패 시 Naver/KRX(optional)/Demo fallback 구조입니다.
 
+주말·KRX 공휴일에는 KIS/Naver 일봉의 마지막 실제 거래일을 검색 기준일로 사용합니다. 해당 거래일 시세를 D로 두고 그 직전 거래일부터 20D/10D 채널을 계산하므로, 마지막 일봉을 현재가와 과거 채널에 중복 사용하지 않습니다.
+
 ## 포지션 신호
 
 DB에 ACTIVE position이 등록되면 worker가 다음을 계산합니다.

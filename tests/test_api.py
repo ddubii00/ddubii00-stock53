@@ -36,6 +36,8 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     candidates = client.get("/api/candidates", params={"provider": "demo", "symbols": "000660"})
     assert candidates.status_code == 200
     assert candidates.json()["items"][0]["source"] == "demo"
+    assert candidates.json()["items"][0]["signal_date"]
+    assert "latest_completed_session" in candidates.json()["items"][0]
     alphanumeric_quote = client.get("/api/quote/0126z0", params={"provider": "demo"})
     assert alphanumeric_quote.status_code == 200
     assert alphanumeric_quote.json()["symbol"] == "0126Z0"
@@ -210,6 +212,8 @@ def test_get_guide_route_is_deploy_smoke_test():
     response = client.get("/api/guide", params={"provider": "demo"})
     assert response.status_code == 200
     assert response.json()["source"] == "demo"
+    assert response.json()["signal_date"]
+    assert "latest_completed_session" in response.json()
 
 
 def test_full_market_scan_demo_is_persisted_and_read_by_candidates(monkeypatch, tmp_path):

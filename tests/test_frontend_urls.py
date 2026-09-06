@@ -104,6 +104,13 @@ def test_live_button_is_next_to_manual_full_market_scan_button():
     assert '>실시간</button>' in controls
 
 
+def test_market_search_displays_latest_open_session_basis():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "function marketBasisText(data)" in source
+    assert "검색 기준일 ${formatted}${latest?' (최근 개장일)':''}" in source
+    assert "주말·공휴일에는 최근 개장일 종가를 검색일 현재가로 사용" in source
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is needed for frontend JS test")
 def test_live_stage_and_target_distance_follow_current_price():
     source = INDEX.read_text(encoding="utf-8")

@@ -372,6 +372,8 @@ def candidates(
                 today_high=snapshot.quote.day_high,
                 today_change_pct=today_change_pct,
                 source=snapshot.quote.source,
+                signal_date=snapshot.as_of_date,
+                latest_completed_session=snapshot.latest_completed_session,
             )
             if include_filtered or item["stage"] != "FILTERED":
                 rows.append(item)
@@ -381,12 +383,17 @@ def candidates(
             )
     rank = {"BREAKOUT": 0, "PREALERT": 1, "WATCH": 2, "FILTERED": 3, "ERROR": 4}
     rows.sort(key=lambda item: (rank.get(item.get("stage", "ERROR"), 9), -int(item.get("score", 0))))
+    signal_dates = [str(item.get("signal_date")) for item in rows if item.get("signal_date")]
     return {
         "provider": getattr(market_provider, "name", market_provider.__class__.__name__),
         "full_market_scan": False,
         "requested_count": requested_count,
         "scanned_count": len(selected),
         "truncated": requested_count > len(selected),
+        "signal_date": max(signal_dates) if signal_dates else None,
+        "latest_completed_session": any(
+            bool(item.get("latest_completed_session")) for item in rows
+        ),
         "note": (
             "Vercel은 소수 watchlist 탐색용입니다. 실전 전체시장 감시는 Oracle + KIS를 사용하세요."
             if app_mode == "vercel"
@@ -465,6 +472,8 @@ def _build_guide(payload: GuideIn) -> dict:
     response.update(
         name=payload.name or DEFAULT_SYMBOLS.get(symbol, symbol),
         source=snapshot.quote.source,
+        signal_date=snapshot.as_of_date,
+        latest_completed_session=snapshot.latest_completed_session,
     )
     return response
 

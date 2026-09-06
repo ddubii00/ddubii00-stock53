@@ -21,7 +21,7 @@
 - 어제 돌파 여부: `High[D-1] > 어제 돌파 기준`
 - System 1 Exit: `MIN(Low[D-1] ... Low[D-10])`
 
-Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에서 제거합니다. 어제 이미 돌파한 종목은 오늘 신규 Unit #1 후보가 아닙니다.
+Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에서 제거합니다. 주말·공휴일처럼 오늘 거래가 없으면 provider가 반환한 **가장 최근 개장일**을 D로 삼고, 그날의 종가/고가와 그 직전 완료 일봉들로 신호를 계산합니다. 최근 개장일 봉을 D-1 채널에 다시 넣지 않으므로 휴장일에도 look-ahead나 동일 봉 중복이 없습니다. 화면에는 `검색 기준일 YYYY-MM-DD (최근 개장일)`을 표시합니다. 어제 이미 돌파한 종목은 오늘 신규 Unit #1 후보가 아닙니다.
 화면의 BREAKOUT은 `오늘 현재가 >= 신규 돌파가`로 판정합니다. 전고점을 단 1호가라도 넘으면 돌파이며, 2%나 5% 이상 더 넘어야 하는 조건은 없습니다. 장중 고가가 돌파했더라도 현재가가 다시 내려오면 PREALERT 또는 WATCH로 이동하고 `장중 돌파 후 하회` 배지를 표시합니다. 목표대비 거리는 `(현재가 / 신규 돌파가 - 1) × 100`을 사용합니다.
 
 ### 포지션
@@ -293,7 +293,7 @@ DB_PATH=./data/turtle.db
 - Naver universe 응답 변경 감시와 KIS 호출 rate-limit 운영 튜닝
 - 전체검색 snapshot용 PostgreSQL adapter 및 Vercel read path
 - Telegram 운영 chat에서 end-to-end 알림 검증
-- 휴장일/관리종목/거래정지 데이터 정책
+- 관리종목/거래정지 데이터 정책
 
 ## Secret
 
