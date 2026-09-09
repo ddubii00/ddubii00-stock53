@@ -50,6 +50,16 @@ def scan_once() -> dict:
         market=os.getenv("FULL_SCAN_MARKET", "ALL"),
         min_market_cap_100m=float(os.getenv("MIN_MARKET_CAP_100M", "500")),
         min_operating_profit_100m=float(os.getenv("MIN_OPERATING_PROFIT_100M", "50")),
+        short_max_market_cap_100m=float(os.getenv("SHORT_MAX_MARKET_CAP_100M", "5000")),
+        short_max_operating_profit_100m=float(
+            os.getenv("SHORT_MAX_OPERATING_PROFIT_100M", "50")
+        ),
+        long_min_avg_volume20_10k=float(
+            os.getenv("LONG_MIN_AVG_VOLUME20_10K", "0")
+        ),
+        short_min_avg_volume20_10k=float(
+            os.getenv("SHORT_MIN_AVG_VOLUME20_10K", "0")
+        ),
         signal_mode=os.getenv("FULL_SCAN_SIGNAL_MODE", "actionable"),
         prealert_pct=float(os.getenv("PREALERT_PCT", "1")),
         avg_value10_filter_enabled=_env_bool("AVG_VALUE10_FILTER_ENABLED", True),

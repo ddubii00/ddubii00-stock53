@@ -33,6 +33,7 @@ class TurtleResult:
     ma120: float | None
     avg_value10: float
     avg_value20: float
+    avg_volume20: float
     volume_ratio: float
     rs20: float
     rs60: float
@@ -215,6 +216,7 @@ def analyze(
         ma120=ma120,
         avg_value10=avg_value10,
         avg_value20=avg_value20,
+        avg_volume20=avg_vol20,
         volume_ratio=volume_ratio,
         rs20=rs20,
         rs60=rs60,

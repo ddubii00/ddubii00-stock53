@@ -229,12 +229,16 @@ def test_full_market_scan_demo_is_persisted_and_read_by_candidates(monkeypatch, 
             "min_operating_profit_100m": 50,
             "short_max_market_cap_100m": 4_500,
             "short_max_operating_profit_100m": -10,
+            "long_min_avg_volume20_10k": 120,
+            "short_min_avg_volume20_10k": 80,
             "signal_mode": "prealert",
         },
     )
     assert response.status_code == 202
     assert response.json()["short_max_market_cap_100m"] == 4_500
     assert response.json()["short_max_operating_profit_100m"] == -10
+    assert response.json()["long_min_avg_volume20_10k"] == 120
+    assert response.json()["short_min_avg_volume20_10k"] == 80
     scan_id = response.json()["scan_id"]
     for _ in range(100):
         status = client.get(f"/api/full-market-scans/{scan_id}")
@@ -250,6 +254,8 @@ def test_full_market_scan_demo_is_persisted_and_read_by_candidates(monkeypatch, 
     assert status.json()["fundamentals_passed"] == 15
     assert status.json()["short_fundamentals_passed"] == 0
     assert status.json()["options"]["short_max_market_cap_100m"] == 4_500
+    assert status.json()["options"]["long_min_avg_volume20_10k"] == 120
+    assert status.json()["options"]["short_min_avg_volume20_10k"] == 80
 
     candidates = client.get("/api/candidates", params={"scope": "all", "scan_id": scan_id})
     assert candidates.status_code == 200

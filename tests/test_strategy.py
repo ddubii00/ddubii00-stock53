@@ -171,3 +171,19 @@ def test_avg_value10_uses_only_last_ten_completed_bars():
         b[index] = Bar(high=150, low=145, close=147, volume=1000, value=60_000_000_000)
     r = analyze(b, 149, 1300, min_score=0)
     assert r.avg_value10 == 60_000_000_000
+
+
+def test_avg_volume20_uses_only_last_twenty_completed_bars():
+    b = fresh_bars()
+    for index in range(-20, 0):
+        bar = b[index]
+        b[index] = Bar(
+            high=bar.high,
+            low=bar.low,
+            close=bar.close,
+            volume=250_000,
+            value=bar.value,
+        )
+    r = analyze(b, 149, 300_000, min_score=0)
+    assert r.avg_volume20 == 250_000
+    assert r.volume_ratio == pytest.approx(1.2)

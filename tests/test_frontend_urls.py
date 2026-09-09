@@ -250,12 +250,18 @@ def test_short_fundamental_filters_and_ai_copy_are_exposed():
     source = INDEX.read_text(encoding="utf-8")
     assert 'id="shortMaxMarketCap"' in source
     assert 'id="shortMaxOperatingProfit"' in source
+    assert 'id="longMinAvgVolume20"' in source
+    assert 'id="shortMinAvgVolume20"' in source
     assert 'class="scanGroup shortFilterGroup"' in source
     assert 'class="field shortFilter"><label for="shortMaxMarketCap">최대 시가총액' in source
     assert 'class="field shortFilter"><label for="shortMaxOperatingProfit">최대 영업이익' in source
     assert 'class="field fullMarketField"><label for="shortMaxMarketCap"' not in source
     assert "short_max_market_cap_100m:num('shortMaxMarketCap')" in source
     assert "short_max_operating_profit_100m:num('shortMaxOperatingProfit')" in source
+    assert "long_min_avg_volume20_10k:num('longMinAvgVolume20')" in source
+    assert "short_min_avg_volume20_10k:num('shortMinAvgVolume20')" in source
+    assert '<label for="minMarketCap">최소 시가총액 (억원)</label>' in source
+    assert "공통 최소 시가총액" not in source
     assert "function aiAnalysisText(item,perspective='long')" in source
     assert 'id="copyAllBtn"' in source
     assert "function allCandidatesAnalysisText()" in source
@@ -273,6 +279,8 @@ def test_candidate_search_controls_use_balanced_visual_groups():
     assert 'class="scanGroup longFilterGroup fullMarketField"' in source
     assert 'class="scanGroup shortFilterGroup"' in source
     assert 'class="scanGroup signalFilterGroup fullMarketField"' in source
+    assert ":root{color-scheme:light" in source
+    assert "background:linear-gradient(180deg,#eef5fb" in source
     assert 'class="extraFilterGroup fullMarketField"' in source
     assert "@media(max-width:980px)" in source
 

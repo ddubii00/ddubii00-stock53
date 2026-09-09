@@ -256,7 +256,7 @@ def test_full_scan_returns_short_prealert_and_breakout_candidates(monkeypatch, t
     common = dict(
         provider="demo",
         market="KOSPI",
-        min_market_cap_100m=500,
+        min_market_cap_100m=950,
         min_operating_profit_100m=50,
         short_max_market_cap_100m=850,
         short_max_operating_profit_100m=50,
@@ -277,6 +277,60 @@ def test_full_scan_returns_short_prealert_and_breakout_candidates(monkeypatch, t
     assert all(item["short_fundamental_pass"] is True for item in prealerts)
     assert {item["symbol"] for item in breakouts} == {"005380"}
     assert all(item["short_stage"] == "SHORT_BREAKOUT" for item in breakouts)
+    assert all(item["market_cap_100m"] < 950 for item in breakouts)
+    assert all(item["long_fundamental_pass"] is False for item in breakouts)
+
+
+def test_full_scan_applies_minimum_average_volume_separately_by_direction(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "direction-volume.db"))
+    long_base = dict(
+        provider="demo",
+        market="KOSPI",
+        min_market_cap_100m=950,
+        min_operating_profit_100m=50,
+        short_max_market_cap_100m=0,
+        signal_mode="breakout",
+        avg_value10_filter_enabled=False,
+    )
+    long_blocked, _ = scan_full_market(
+        FullScanConfig(**long_base, long_min_avg_volume20_10k=100),
+        market_provider=CountingDemo(),
+        universe_provider=FilterUniverse(),
+    )
+    long_allowed, _ = scan_full_market(
+        FullScanConfig(**long_base, long_min_avg_volume20_10k=90),
+        market_provider=CountingDemo(),
+        universe_provider=FilterUniverse(),
+    )
+    assert long_blocked == []
+    assert {item["symbol"] for item in long_allowed} == {"000660"}
+    assert all(item["long_volume_pass"] is True for item in long_allowed)
+
+    short_base = dict(
+        provider="demo",
+        market="KOSPI",
+        min_market_cap_100m=10_000,
+        min_operating_profit_100m=10_000,
+        short_max_market_cap_100m=850,
+        short_max_operating_profit_100m=50,
+        signal_mode="breakout",
+        avg_value10_filter_enabled=False,
+    )
+    short_blocked, _ = scan_full_market(
+        FullScanConfig(**short_base, short_min_avg_volume20_10k=100),
+        market_provider=ShortSignalDemo(0.999),
+        universe_provider=FilterUniverse(),
+    )
+    short_allowed, _ = scan_full_market(
+        FullScanConfig(**short_base, short_min_avg_volume20_10k=90),
+        market_provider=ShortSignalDemo(0.999),
+        universe_provider=FilterUniverse(),
+    )
+    assert short_blocked == []
+    assert {item["symbol"] for item in short_allowed} == {"005380"}
+    assert all(item["short_volume_pass"] is True for item in short_allowed)
 
 
 def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):

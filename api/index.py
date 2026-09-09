@@ -94,6 +94,8 @@ class FullMarketScanIn(BaseModel):
     min_operating_profit_100m: float = 50
     short_max_market_cap_100m: float = Field(default=5_000, ge=0)
     short_max_operating_profit_100m: float = 50
+    long_min_avg_volume20_10k: float = Field(default=0, ge=0)
+    short_min_avg_volume20_10k: float = Field(default=0, ge=0)
     include_etf: bool = False
     signal_mode: str = Field(default="prealert", pattern="^(prealert|breakout|actionable)$")
     prealert_pct: float = Field(default=1.0, ge=0, le=100)

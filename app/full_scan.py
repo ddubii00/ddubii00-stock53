@@ -36,6 +36,8 @@ class FullScanConfig:
     min_operating_profit_100m: float = 50.0
     short_max_market_cap_100m: float = 5_000.0
     short_max_operating_profit_100m: float = 50.0
+    long_min_avg_volume20_10k: float = 0.0
+    short_min_avg_volume20_10k: float = 0.0
     include_etf: bool = False
     signal_mode: str = "prealert"
     prealert_pct: float = 1.0
@@ -55,6 +57,10 @@ class FullScanConfig:
             raise ValueError("min market cap cannot be negative")
         if self.short_max_market_cap_100m < 0:
             raise ValueError("short max market cap cannot be negative")
+        if self.long_min_avg_volume20_10k < 0:
+            raise ValueError("long minimum 20-day average volume cannot be negative")
+        if self.short_min_avg_volume20_10k < 0:
+            raise ValueError("short minimum 20-day average volume cannot be negative")
         if self.signal_mode not in {"prealert", "breakout", "actionable"}:
             raise ValueError("signal_mode must be prealert, breakout, or actionable")
         if self.prealert_pct < 0:
@@ -76,6 +82,8 @@ class FullScanConfig:
             short_max_operating_profit_100m=float(
                 self.short_max_operating_profit_100m
             ),
+            long_min_avg_volume20_10k=float(self.long_min_avg_volume20_10k),
+            short_min_avg_volume20_10k=float(self.short_min_avg_volume20_10k),
             include_etf=bool(self.include_etf),
             signal_mode=self.signal_mode,
             prealert_pct=float(self.prealert_pct),
@@ -96,6 +104,8 @@ class FullScanConfig:
             "min_operating_profit_100m": self.min_operating_profit_100m,
             "short_max_market_cap_100m": self.short_max_market_cap_100m,
             "short_max_operating_profit_100m": self.short_max_operating_profit_100m,
+            "long_min_avg_volume20_10k": self.long_min_avg_volume20_10k,
+            "short_min_avg_volume20_10k": self.short_min_avg_volume20_10k,
             "include_etf": self.include_etf,
             "signal_mode": self.signal_mode,
             "prealert_pct": self.prealert_pct,
@@ -149,9 +159,12 @@ def _fundamental_sides(
     if member.asset_type == "ETF":
         return True, True
     profit = member.operating_profit_100m
-    if profit is None or member.market_cap_100m < config.min_market_cap_100m:
+    if profit is None:
         return False, False
-    long_pass = profit >= config.min_operating_profit_100m
+    long_pass = (
+        member.market_cap_100m >= config.min_market_cap_100m
+        and profit >= config.min_operating_profit_100m
+    )
     short_pass = (
         member.market_cap_100m <= config.short_max_market_cap_100m
         and profit <= config.short_max_operating_profit_100m
@@ -177,7 +190,7 @@ def scan_full_market(
 
     members = universe.list_members(
         config.market,
-        config.min_market_cap_100m,
+        0,
         lambda done, total, message: report("universe", done, total, message),
         include_etf=config.include_etf,
     )
@@ -206,9 +219,9 @@ def scan_full_market(
         universe_count,
         (
             f"일반주식 {stock_count:,}개 + ETF {etf_count:,}개 확인 · "
-            f"주식 시총 통과 + ETF {universe_count:,}개 · 영업이익 확인중"
+            f"롱·숏 독립 시총 범위 판정 대상 + ETF {universe_count:,}개 · 영업이익 확인중"
             if config.include_etf
-            else f"상장주식 {listed_count:,}개 전체 확인 · 시총 통과 {universe_count:,}개 · 영업이익 확인중"
+            else f"상장주식 {listed_count:,}개 전체 확인 · 롱·숏 독립 시총 범위 판정 · 영업이익 확인중"
         ),
     )
 
@@ -292,8 +305,10 @@ def scan_full_market(
             today_high=snapshot.quote.day_high,
         )
         long_fundamental_pass, short_fundamental_pass = _fundamental_sides(config, member)
-        long_signal = long_fundamental_pass and result.stage in long_stages
-        short_signal = short_fundamental_pass and result.short_stage in short_stages
+        long_volume_pass = result.avg_volume20 >= config.long_min_avg_volume20_10k * 10_000
+        short_volume_pass = result.avg_volume20 >= config.short_min_avg_volume20_10k * 10_000
+        long_signal = long_fundamental_pass and long_volume_pass and result.stage in long_stages
+        short_signal = short_fundamental_pass and short_volume_pass and result.short_stage in short_stages
         if (
             long_signal
             and result.stage == "BREAKOUT"
@@ -345,6 +360,8 @@ def scan_full_market(
             asset_type=member.asset_type,
             long_fundamental_pass=long_fundamental_pass,
             short_fundamental_pass=short_fundamental_pass,
+            long_volume_pass=long_volume_pass,
+            short_volume_pass=short_volume_pass,
             current=snapshot.quote.price,
             today_high=snapshot.quote.day_high,
             today_change_pct=today_change_pct,
@@ -414,13 +431,13 @@ def scan_full_market(
         "message": (
             (
                 f"일반주식 {stock_count:,}개 + ETF {etf_count:,}개(ETN 제외) "
-                f"→ 주식 시총 통과 + ETF {universe_count:,}개 "
+                f"→ 롱·숏 독립 시총 범위 판정 + ETF {universe_count:,}개 "
                 f"→ 롱 재무 통과 {stock_fundamentals_passed:,}개 · 숏 재무 통과 {short_fundamentals_passed:,}개 + ETF {etf_scanned:,}개 "
                 f"→ 선택 옵션 통과 후보 {len(items):,}개"
             )
             if config.include_etf
             else (
-                f"상장주식 전체 {listed_count:,}개(ETF/ETN 제외) → 시총 통과 {universe_count:,}개 "
+                f"상장주식 전체 {listed_count:,}개(ETF/ETN 제외) → 롱·숏 독립 시총 범위 판정 {universe_count:,}개 "
                 f"→ 롱 재무 통과 {stock_fundamentals_passed:,}개 · 숏 재무 통과 {short_fundamentals_passed:,}개 "
                 f"→ 합집합 {total:,}개 → 선택 옵션 통과 후보 {len(items):,}개"
             )
