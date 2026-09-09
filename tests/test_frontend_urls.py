@@ -165,6 +165,7 @@ def test_investor_flow_is_split_and_basis_remains_available_for_copy():
     assert "item.investor_date" in source
     assert "fetchJson('/api/investor-flows?'" in source
     assert "source==='kis'&&Math.max(Math.abs(foreign),Math.abs(institution))<0.05" in source
+    assert "item.investor_amount_estimated?'≈':'')" not in source
 
 
 def test_candidate_table_shows_atr_and_current_state_badges():
@@ -249,14 +250,31 @@ def test_short_fundamental_filters_and_ai_copy_are_exposed():
     source = INDEX.read_text(encoding="utf-8")
     assert 'id="shortMaxMarketCap"' in source
     assert 'id="shortMaxOperatingProfit"' in source
-    assert 'class="field shortFilter"><label for="shortMaxMarketCap">숏 전용 · 최대 시가총액' in source
-    assert 'class="field shortFilter"><label for="shortMaxOperatingProfit">숏 전용 · 최대 영업이익' in source
+    assert 'class="scanGroup shortFilterGroup"' in source
+    assert 'class="field shortFilter"><label for="shortMaxMarketCap">최대 시가총액' in source
+    assert 'class="field shortFilter"><label for="shortMaxOperatingProfit">최대 영업이익' in source
     assert 'class="field fullMarketField"><label for="shortMaxMarketCap"' not in source
     assert "short_max_market_cap_100m:num('shortMaxMarketCap')" in source
     assert "short_max_operating_profit_100m:num('shortMaxOperatingProfit')" in source
     assert "function aiAnalysisText(item,perspective='long')" in source
-    assert "copy.textContent='복사'" in source
-    assert "AI 분석용 텍스트 복사" in source
+    assert 'id="copyAllBtn"' in source
+    assert "function allCandidatesAnalysisText()" in source
+    assert "copyAllCandidatesForAi(event.currentTarget)" in source
+    assert "현재 롱·숏 후보 전체 정보를 AI 분석용 텍스트로 복사" in source
+    assert "className='button copyCandidate'" not in source
+    assert "터틀 트레이딩 전체 후보 비교 분석 요청" in source
+    assert "Quality 근거" in source
+
+
+def test_candidate_search_controls_use_balanced_visual_groups():
+    source = INDEX.read_text(encoding="utf-8")
+    assert 'class="scanTargetGrid"' in source
+    assert 'class="scanStrategyGrid"' in source
+    assert 'class="scanGroup longFilterGroup fullMarketField"' in source
+    assert 'class="scanGroup shortFilterGroup"' in source
+    assert 'class="scanGroup signalFilterGroup fullMarketField"' in source
+    assert 'class="extraFilterGroup fullMarketField"' in source
+    assert "@media(max-width:980px)" in source
 
 
 def test_delete_does_not_restore_removed_oracle_position_from_local_storage():

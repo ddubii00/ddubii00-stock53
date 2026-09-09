@@ -10,8 +10,8 @@
 .signalButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}.signalButton{border:1px solid var(--line);background:#0e151d;color:var(--muted);border-radius:9px;padding:9px;font-weight:850}.signalButton[data-signal="prealert"]{color:var(--yellow);border-color:#a88412;background:#3d3308}.signalButton[data-signal="breakout"]{color:var(--green);border-color:#16823d;background:#0d3b20}.filterLabel{font-size:12px;color:var(--muted);margin:14px 0 8px}.filterList{display:flex;gap:8px;flex-wrap:wrap}.filterChip{display:flex;align-items:center;gap:7px;padding:7px 8px 7px 11px;border:1px solid #38506a;border-radius:12px;background:#111d29;font-size:12px}.filterChip input{width:92px;padding:7px}.filterChip select{width:auto;padding:7px}.filterX{border:0;background:transparent;color:#a9bbcc;font-size:20px;line-height:1;cursor:pointer;padding:0 3px}.addFilter{padding:7px 10px;font-size:12px}.sortButton{border:0;background:transparent;color:inherit;font:inherit;font-weight:800;cursor:pointer;padding:0;white-space:nowrap}.sortButton:hover{color:var(--blue)}.sortButton.active{color:var(--blue)}.sellRule{line-height:1.65}.sellAction{font-size:24px;font-weight:900;margin:6px 0}.changeUp{color:#ff5b5b;font-weight:850}.changeDown{color:#4c8dff;font-weight:850}.changeFlat{color:var(--muted);font-weight:800}
 .stockLink{color:#7dd3fc;text-decoration:none;font-weight:800}.stockLink:hover{text-decoration:underline}.stockLink::after{content:' ↗';font-size:10px;color:var(--muted)}
 .checkOption{display:flex!important;align-items:center;gap:8px;color:var(--text)!important;font-size:14px!important;padding:9px 0;cursor:pointer}.checkOption input{appearance:auto!important;width:18px!important;height:18px;margin:0;accent-color:var(--green);cursor:pointer}.signalSection{margin-top:18px}.signalSectionTitle{display:flex;align-items:center;gap:9px;margin:0 0 8px;font-size:17px}.countBadge{border:1px solid var(--line);border-radius:99px;padding:3px 8px;color:var(--muted);font-size:12px}.stateBadge{display:inline-block;margin-left:6px;padding:3px 7px;border:1px solid;border-radius:999px;font-size:10px;font-weight:850;vertical-align:middle}.stateBadge.intraday{color:#86efac;background:#123b25;border-color:#22c55e}.stateBadge.outRange{color:#e9d5ff;background:#35204c;border-color:#a855f7}.trackedList{display:grid;gap:8px;margin-top:12px}.trackedItem{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel2)}.trackedItem .trackedInfo{flex:1;min-width:230px}.trackedItemName{font-weight:850}.trackedItemDetail{margin-top:4px;line-height:1.55}.readonlyValue{opacity:.85}
-.shortFilter{border:1px solid #6b2a45;border-radius:12px;padding:10px;background:#21111a}.shortFilter label{color:#fda4af}.shortFilter .muted{color:#caa5b3}
-.longBadge,.shortBadge{display:inline-block;margin-right:6px;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:900}.longBadge{background:#123b25;border:1px solid #22c55e;color:#86efac}.shortBadge{background:#3b1422;border:1px solid #ef4444;color:#fca5a5}.selectCandidate,.copyCandidate{margin-left:7px;padding:4px 7px;font-size:11px}.copyCandidate{color:#c7d2fe}.unitExtended{border-color:#7c3aed;background:#211536}.unitExtended .kv span{color:#d8b4fe}.symbolSearchWrap{position:relative}.symbolSuggestions{position:absolute;z-index:30;top:100%;left:0;right:0;max-height:260px;overflow:auto;background:#111821;border:1px solid #38506a;border-radius:10px;box-shadow:0 14px 30px rgba(0,0,0,.4)}.symbolSuggestion{display:flex;width:100%;justify-content:space-between;gap:12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text);padding:10px;text-align:left;cursor:pointer}.symbolSuggestion:hover{background:#1a2734}.symbolSuggestion:last-child{border-bottom:0}.actionInstrument{margin-top:3px;color:#c7d2fe;font-weight:800}.shortGuide{border-color:#a855f7}.shortGuide .actionTitle{color:#e9d5ff}
+.scanTargetGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}.scanStrategyGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.scanGroup{min-width:0;border:1px solid var(--line);border-radius:14px;padding:14px;background:#0d151e}.scanGroupHeading{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:850}.scanGroupFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.scanGroupNote{min-height:32px;margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.45}.longFilterGroup{border-color:#23583d;background:linear-gradient(145deg,#10231a,#0d151e 62%)}.longFilterGroup .scanGroupHeading{color:#86efac}.shortFilterGroup{border-color:#743047;background:linear-gradient(145deg,#28121b,#0d151e 62%)}.shortFilterGroup .scanGroupHeading,.shortFilter label{color:#fda4af}.shortFilter{min-width:0}.shortFilterGroup .scanGroupNote{color:#caa5b3}.signalFilterGroup{border-color:#3c536d;background:linear-gradient(145deg,#111e2c,#0d151e 62%)}.signalFilterGroup .scanGroupHeading{color:#bae6fd}.signalFilterGroup .scanGroupFields{grid-template-columns:minmax(0,1.35fr) minmax(110px,.65fr)}.signalFilterGroup .signalButton{padding:9px 6px;font-size:12px}.extraFilterGroup{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#0d151e}.extraFilterHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.extraFilterHead .filterLabel{margin:0}.scanActions{padding-top:14px;margin-top:14px!important;border-top:1px solid var(--line)}@media(max-width:980px){.scanTargetGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.scanStrategyGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.signalFilterGroup{grid-column:1/-1}}@media(max-width:720px){.scanTargetGrid,.scanStrategyGrid,.scanGroupFields,.signalFilterGroup .scanGroupFields{grid-template-columns:1fr}.signalFilterGroup{grid-column:auto}.scanGroupNote{min-height:0}.extraFilterHead{align-items:flex-start;flex-direction:column}.scanActions .right{width:100%;margin-top:4px}}
+.longBadge,.shortBadge{display:inline-block;margin-right:6px;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:900}.longBadge{background:#123b25;border:1px solid #22c55e;color:#86efac}.shortBadge{background:#3b1422;border:1px solid #ef4444;color:#fca5a5}.selectCandidate{margin-left:7px;padding:4px 7px;font-size:11px}.copyAllButton{border-color:#6366f1;background:#28245d;color:#e0e7ff}.copyAllButton:hover{border-color:#a5b4fc;background:#37307a}.unitExtended{border-color:#7c3aed;background:#211536}.unitExtended .kv span{color:#d8b4fe}.symbolSearchWrap{position:relative}.symbolSuggestions{position:absolute;z-index:30;top:100%;left:0;right:0;max-height:260px;overflow:auto;background:#111821;border:1px solid #38506a;border-radius:10px;box-shadow:0 14px 30px rgba(0,0,0,.4)}.symbolSuggestion{display:flex;width:100%;justify-content:space-between;gap:12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text);padding:10px;text-align:left;cursor:pointer}.symbolSuggestion:hover{background:#1a2734}.symbolSuggestion:last-child{border-bottom:0}.actionInstrument{margin-top:3px;color:#c7d2fe;font-weight:800}.shortGuide{border-color:#a855f7}.shortGuide .actionTitle{color:#e9d5ff}
 </style>
 </head>
 <body>
@@ -25,6 +25,7 @@
     <div class="buttons">
       <select id="provider" aria-label="데이터 공급자"><option value="auto">AUTO</option><option value="kis">KIS</option><option value="naver">NAVER</option><option value="krx">KRX</option><option value="demo">DEMO</option></select>
       <button id="refreshBtn" class="button primary" type="button">↻ 새로고침</button>
+      <button id="copyAllBtn" class="button copyAllButton" type="button" title="현재 롱·숏 후보 전체 정보를 AI 분석용 텍스트로 복사">AI 분석 복사</button>
       <span id="pollInterval" class="muted tiny">주기 30초</span>
       <span id="scanState" class="status" aria-live="polite">대기</span>
       <span id="health" class="status">API 확인중</span>
@@ -41,26 +42,47 @@
 
   <h2 class="section">후보 검색</h2>
   <section class="card scanPanel">
-    <div class="formGrid">
+    <div class="scanTargetGrid">
       <div class="field"><label for="scanScope">검색 범위</label><select id="scanScope"><option value="all" selected>KOSPI/KOSDAQ 전체 · 수동 검색</option><option value="watchlist">직접 입력 종목</option></select></div>
       <div class="field fullMarketField"><label for="marketScope">시장 필터</label><select id="marketScope"><option value="ALL">KOSPI + KOSDAQ 전체</option><option value="KOSPI">KOSPI만</option><option value="KOSDAQ">KOSDAQ만</option></select></div>
       <div class="field fullMarketField"><label>검색 자산</label><label class="checkOption" for="includeEtf"><input id="includeEtf" type="checkbox"> ETF도 추가 검색</label><div class="muted tiny">ETF는 시총·영업이익·수급 필터 면제</div></div>
-      <div class="field fullMarketField"><label for="minMarketCap">공통 최소 시가총액 (억원)</label><input id="minMarketCap" type="number" value="500" min="0" step="100"><div class="muted tiny">롱·숏 잡주 제외 하한</div></div>
-      <div class="field fullMarketField"><label for="minOperatingProfit">롱 최소 영업이익 (억원)</label><input id="minOperatingProfit" type="number" value="50" step="10"></div>
-      <div class="field shortFilter"><label for="shortMaxMarketCap">숏 전용 · 최대 시가총액 (억원)</label><input id="shortMaxMarketCap" type="number" value="5000" min="0" step="100"><div class="muted tiny">전체시장 숏 후보에만 적용 · 공통 최소 시총 이상</div></div>
-      <div class="field shortFilter"><label for="shortMaxOperatingProfit">숏 전용 · 최대 영업이익 (억원)</label><input id="shortMaxOperatingProfit" type="number" value="50" step="10"><div class="muted tiny">전체시장 숏 후보는 이 값 이하만 검색</div></div>
-      <div class="field fullMarketField"><label>표시 신호 · 동시 검색</label><div class="signalButtons"><span class="signalButton" data-signal="prealert">PREALERT</span><span class="signalButton" data-signal="breakout">BREAKOUT</span></div></div>
-      <div id="prealertField" class="field fullMarketField"><label for="prealertPct">신고가 접근 범위 (%)</label><input id="prealertPct" type="number" value="1" min="0" max="100" step="0.1"></div>
     </div>
-    <div class="filterLabel fullMarketField">추가 선택 필터 · ×를 누르면 해당 조건을 적용하지 않습니다</div>
-    <div class="filterList fullMarketField">
-      <div id="avgValue10Filter" class="filterChip"><span>10D 평균거래대금</span><input id="minAvgValue10" aria-label="최소 10일 평균거래대금" type="number" value="500" min="0" step="50"><span>억원 이상</span><button class="filterX" data-remove-filter="avgValue10Filter" aria-label="10일 평균거래대금 필터 해제" type="button">×</button></div>
-      <div id="investorFilter" class="filterChip" hidden><span>당일 수급</span><select id="investorMode" aria-label="투자자 수급 구분"><option value="either">외인 또는 기관</option><option value="foreign">외국인</option><option value="institution">기관</option><option value="combined">외인+기관 합산</option></select><input id="minInvestorBuy" aria-label="최소 순매수액" type="number" value="0" min="0" step="10"><span>억원 이상 (0=매수 여부)</span><button class="filterX" data-remove-filter="investorFilter" aria-label="수급 필터 해제" type="button">×</button></div>
-      <div id="todayChangeFilter" class="filterChip" hidden><span>BREAKOUT 당일</span><input id="minTodayChange" aria-label="최소 당일 상승률" type="number" value="5" min="0" max="100" step="0.5"><span>% 이상</span><button class="filterX" data-remove-filter="todayChangeFilter" aria-label="당일 상승률 필터 해제" type="button">×</button></div>
+    <div class="scanStrategyGrid">
+      <section class="scanGroup longFilterGroup fullMarketField">
+        <div class="scanGroupHeading"><span class="longBadge">LONG</span> 롱 후보 기본 필터</div>
+        <div class="scanGroupFields">
+          <div class="field"><label for="minMarketCap">공통 최소 시가총액 (억원)</label><input id="minMarketCap" type="number" value="500" min="0" step="100"></div>
+          <div class="field"><label for="minOperatingProfit">최소 영업이익 (억원)</label><input id="minOperatingProfit" type="number" value="50" step="10"></div>
+        </div>
+        <p class="scanGroupNote">공통 시총 하한으로 잡주를 제외하고, 영업이익이 입력값 이상인 롱 후보를 찾습니다.</p>
+      </section>
+      <section class="scanGroup shortFilterGroup">
+        <div class="scanGroupHeading"><span class="shortBadge">SHORT</span> 숏 후보 기본 필터</div>
+        <div class="scanGroupFields">
+          <div class="field shortFilter"><label for="shortMaxMarketCap">최대 시가총액 (억원)</label><input id="shortMaxMarketCap" type="number" value="5000" min="0" step="100"></div>
+          <div class="field shortFilter"><label for="shortMaxOperatingProfit">최대 영업이익 (억원)</label><input id="shortMaxOperatingProfit" type="number" value="50" step="10"></div>
+        </div>
+        <p class="scanGroupNote">공통 최소 시총 이상이면서 두 입력값 이하인 전체시장 숏 후보에만 적용합니다.</p>
+      </section>
+      <section class="scanGroup signalFilterGroup fullMarketField">
+        <div class="scanGroupHeading">신호 설정</div>
+        <div class="scanGroupFields">
+          <div class="field"><label>표시 신호 · 동시 검색</label><div class="signalButtons"><span class="signalButton" data-signal="prealert">PREALERT</span><span class="signalButton" data-signal="breakout">BREAKOUT</span></div></div>
+          <div id="prealertField" class="field"><label for="prealertPct">신고가 접근 범위 (%)</label><input id="prealertPct" type="number" value="1" min="0" max="100" step="0.1"></div>
+        </div>
+        <p class="scanGroupNote">PREALERT와 BREAKOUT을 동시에 계산하며 접근 범위는 입력값을 반영합니다.</p>
+      </section>
     </div>
-    <div class="buttons fullMarketField" style="margin-top:8px"><button id="addAvgValue10" class="button addFilter" type="button" hidden>+ 10D 평균거래대금</button><button id="addInvestor" class="button addFilter" type="button">+ 외인/기관 수급</button><button id="addTodayChange" class="button addFilter" type="button">+ BREAKOUT 당일 상승률</button></div>
+    <section class="extraFilterGroup fullMarketField">
+      <div class="extraFilterHead"><div class="filterLabel">추가 선택 필터 · ×를 누르면 해당 조건을 적용하지 않습니다</div><div class="buttons"><button id="addAvgValue10" class="button addFilter" type="button" hidden>+ 10D 평균거래대금</button><button id="addInvestor" class="button addFilter" type="button">+ 외인/기관 수급</button><button id="addTodayChange" class="button addFilter" type="button">+ BREAKOUT 당일 상승률</button></div></div>
+      <div class="filterList">
+        <div id="avgValue10Filter" class="filterChip"><span>10D 평균거래대금</span><input id="minAvgValue10" aria-label="최소 10일 평균거래대금" type="number" value="500" min="0" step="50"><span>억원 이상</span><button class="filterX" data-remove-filter="avgValue10Filter" aria-label="10일 평균거래대금 필터 해제" type="button">×</button></div>
+        <div id="investorFilter" class="filterChip" hidden><span>당일 수급</span><select id="investorMode" aria-label="투자자 수급 구분"><option value="either">외인 또는 기관</option><option value="foreign">외국인</option><option value="institution">기관</option><option value="combined">외인+기관 합산</option></select><input id="minInvestorBuy" aria-label="최소 순매수액" type="number" value="0" min="0" step="10"><span>억원 이상 (0=매수 여부)</span><button class="filterX" data-remove-filter="investorFilter" aria-label="수급 필터 해제" type="button">×</button></div>
+        <div id="todayChangeFilter" class="filterChip" hidden><span>BREAKOUT 당일</span><input id="minTodayChange" aria-label="최소 당일 상승률" type="number" value="5" min="0" max="100" step="0.5"><span>% 이상</span><button class="filterX" data-remove-filter="todayChangeFilter" aria-label="당일 상승률 필터 해제" type="button">×</button></div>
+      </div>
+    </section>
     <div id="watchlistControls" class="buttons" hidden style="margin-top:10px"><input id="symbolsInput" style="min-width:390px" value="000660,005930,005380,012450,035420" placeholder="종목코드 쉼표 구분"></div>
-    <div class="buttons" style="margin-top:12px">
+    <div class="buttons scanActions">
       <button id="marketScanBtn" class="button success fullMarketField" type="button">전체시장 새 검색</button>
       <button id="liveBtn" class="button live" type="button">실시간</button>
       <span id="providerNote" class="muted tiny">일반주식 전체 → 공통 최소 시총 → 롱 최소 영업이익 / 숏 최대 시총·영업이익 → 신호 순으로 계산합니다. ETF 체크 시 ETF를 추가하고 ETN은 제외합니다.</span>
@@ -338,7 +360,7 @@ function showCandidate(data,{populateTracking=true,persistSelection=false,select
 
 function flowAmountText(item,key){
   const value=Number(item?.[key]);if(item?.asset_type==='ETF'||item?.[key]==null||!Number.isFinite(value))return '-';
-  return (item.investor_amount_estimated?'≈':'')+(value>0?'+':'')+value.toFixed(1);
+  return (value>0?'+':'')+value.toFixed(1);
 }
 function flowDateText(value){
   const digits=String(value||'').replace(/\D/g,'');return digits.length===8?`${digits.slice(4,6)}.${digits.slice(6,8)}`:'-';
@@ -375,20 +397,19 @@ function candidateStatusBadges(item,perspective='long'){
 }
 function aiAnalysisText(item,perspective='long'){
   const short=perspective==='short',stage=short?item.short_stage:item.stage,target=Number(short?item.short_entry20:item.breakout20),distance=short?item.short_distance_pct:targetDistancePct(item),direction=short?'숏 · 하락 돌파':'롱 · 상승 돌파';
+  const stop=short?item.short_initial_stop:item.initial_stop,exit=short?item.short_exit10:item.exit10,adds=short?[item.short_add2,item.short_add3,item.short_add4,item.short_add5,item.short_add6]:[item.add2,item.add3,item.add4,item.add5,item.add6];
   return [
-    '[터틀 트레이딩 후보 분석 요청]',
-    '아래 수치만을 근거로 후보의 추세 품질, 진입 타이밍, 손절·청산 위험을 분석하고 진입/관망/회피 의견을 주세요. 자동주문 지시는 하지 말고 불확실한 데이터는 명시해 주세요.',
-    '',
-    `방향: ${direction}`,
+    `### ${direction} · ${stage||'-'}`,
     `종목: ${item.name||item.symbol} (${item.symbol})`,
-    `시장: ${item.market||'-'}`,
-    `현재 신호: ${stage||'-'}`,
+    `시장/자산: ${item.market||'-'} / ${item.asset_type||'STOCK'}`,
     `검색 기준일: ${item.signal_date||'-'}`,
-    `현재가: ${fmt(item.current)}`,
+    `현재가 / 오늘 고가: ${fmt(item.current)} / ${fmt(item.today_high)}`,
     `${short?'20D 신저가':'20D 돌파가'}: ${fmt(target)}`,
     `목표대비 거리: ${signedPct(distance)}`,
     `당일 등락률: ${pct(item.today_change_pct)}`,
     `ATR20(N): ${fmt(item.atr20)} / ATR%: ${pct(item.atr_pct)}`,
+    `초기 2N STOP / 10D 청산: ${fmt(stop)} / ${fmt(exit)}`,
+    `추가 Unit #2~#6: ${adds.map(value=>fmt(value)).join(' / ')}`,
     `시가총액: ${Number.isFinite(Number(item.market_cap_100m))?Math.round(Number(item.market_cap_100m)).toLocaleString('ko-KR')+'억원':'-'}`,
     `영업이익: ${item.asset_type==='ETF'?'ETF 필터 면제':Number.isFinite(Number(item.operating_profit_100m))?Math.round(Number(item.operating_profit_100m)).toLocaleString('ko-KR')+'억원':'-'}`,
     `10일 평균거래대금: ${Number.isFinite(Number(item.avg_value10))?(Number(item.avg_value10)/100000000).toFixed(1)+'억원':'-'}`,
@@ -400,18 +421,64 @@ function aiAnalysisText(item,perspective='long'){
     `거래량 강도: ${Number.isFinite(Number(item.volume_ratio))?Number(item.volume_ratio).toFixed(2)+'배':'-'}`,
     `52주 고가 거리: ${pct(item.high52_distance_pct)}`,
     `Quality: ${item.score??'-'}/100 (돌파 판정과 별개의 우선순위 참고값)`,
+    `Quality 근거: ${(item.reasons||[]).join(' · ')||'-'}`,
     `데이터 Source: ${marketSourceText(item)}`,
-    '',
-    '참고: 이 앱은 신호 안내용이며 실제 주문을 전송하지 않습니다.'
   ].join('\n');
 }
 async function copyText(value){
   if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);return}
   const area=document.createElement('textarea');area.value=value;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();const copied=document.execCommand('copy');area.remove();if(!copied)throw new Error('클립보드 복사를 지원하지 않는 브라우저입니다.');
 }
-async function copyCandidateForAi(item,perspective,button){
+function allCandidatesAnalysisText(){
+  const rows=sortedCandidates(),valid=rows.filter(item=>item.stage!=='ERROR'),errors=rows.filter(item=>item.stage==='ERROR'),config=scanConfig();
+  const groups=[
+    {title:'롱 PREALERT',perspective:'long',items:valid.filter(item=>item.stage==='PREALERT')},
+    {title:'롱 BREAKOUT',perspective:'long',items:valid.filter(item=>item.stage==='BREAKOUT')},
+    {title:'롱 접근범위 이탈 추적',perspective:'long',items:valid.filter(item=>item._track_long&&item.stage==='WATCH')},
+    {title:'숏 PREALERT',perspective:'short',items:valid.filter(item=>item.short_stage==='SHORT_PREALERT')},
+    {title:'숏 BREAKOUT',perspective:'short',items:valid.filter(item=>isShortBreakout(item.short_stage))},
+    {title:'숏 접근범위 이탈 추적',perspective:'short',items:valid.filter(item=>item._track_short&&item.short_stage==='SHORT_WATCH')},
+  ];
+  const included=new Set(groups.flatMap(group=>group.items.map(item=>item.symbol))),remaining=valid.filter(item=>!included.has(item.symbol));
+  if(remaining.length)groups.push({title:'기타 조회 결과',perspective:'long',items:remaining});
+  const activeCount=groups.reduce((sum,group)=>sum+group.items.length,0);
+  if(!activeCount&&!errors.length)throw new Error('복사할 후보가 없습니다. 먼저 후보를 검색하세요.');
+  const filterLines=[
+    `검색 시각: ${new Date().toLocaleString('ko-KR')}`,
+    `검색 범위: ${el('scanScope').selectedOptions[0]?.textContent||el('scanScope').value}`,
+    `Provider / 시장: ${el('provider').value.toUpperCase()} / ${config.market}`,
+    `ETF 추가: ${config.include_etf?'예':'아니오'}`,
+    `공통 최소 시총: ${config.min_market_cap_100m.toLocaleString('ko-KR')}억원`,
+    `롱 최소 영업이익: ${config.min_operating_profit_100m.toLocaleString('ko-KR')}억원`,
+    `숏 최대 시총 / 최대 영업이익: ${config.short_max_market_cap_100m.toLocaleString('ko-KR')}억원 / ${config.short_max_operating_profit_100m.toLocaleString('ko-KR')}억원`,
+    `PREALERT 접근 범위: ${config.prealert_pct}%`,
+    `10D 평균거래대금 필터: ${config.avg_value10_filter_enabled?config.min_avg_value10_100m.toLocaleString('ko-KR')+'억원 이상':'미적용'}`,
+    `외인·기관 수급 필터: ${config.investor_filter_enabled?config.investor_mode+' / '+config.min_investor_net_buy_100m.toLocaleString('ko-KR')+'억원 이상':'미적용'}`,
+    `BREAKOUT 당일 상승률 필터: ${config.today_change_filter_enabled?config.min_today_change_pct+'% 이상':'미적용'}`,
+  ];
+  const summary=groups.map(group=>`${group.title} ${group.items.length.toLocaleString('ko-KR')}개`).join(' · ');
+  const blocks=groups.filter(group=>group.items.length).flatMap(group=>[
+    '',`## ${group.title} (${group.items.length.toLocaleString('ko-KR')}개)`,'',
+    ...group.items.flatMap((item,index)=>[`${index+1}.`,aiAnalysisText(item,group.perspective),''])
+  ]);
+  if(errors.length)blocks.push('',`## 조회 오류 (${errors.length.toLocaleString('ko-KR')}개)`,'',...errors.map(item=>`- ${item.name||item.symbol} (${item.symbol}): ${item.error||'조회 실패'}`));
+  return [
+    '[터틀 트레이딩 전체 후보 비교 분석 요청]',
+    '아래 검색 조건과 모든 후보 수치를 비교해 롱과 숏 각각의 우선순위를 최대 3개까지 정하고, 최종 최적 후보와 관망/회피 후보를 구분해 주세요. 진입 근거, 반대 시나리오, 2N 손절 및 채널 청산 위험을 함께 설명하고 불확실하거나 추정된 데이터는 명시해 주세요. 실제 주문 지시는 하지 마세요.',
+    '',
+    '## 검색 조건',
+    ...filterLines,
+    `검색 메모: ${candidateNote||'-'}`,
+    '',
+    `## 결과 요약\n${summary||'정상 후보 없음'} · 조회 오류 ${errors.length.toLocaleString('ko-KR')}개`,
+    ...blocks,
+    '',
+    '참고: 이 앱은 신호 안내용이며 실제 주문을 전송하지 않습니다.'
+  ].join('\n');
+}
+async function copyAllCandidatesForAi(button){
   const original=button.textContent;
-  try{await copyText(aiAnalysisText(item,perspective));button.textContent='복사됨';setTimeout(()=>{button.textContent=original},1200)}catch(error){alert('복사 실패: '+error.message)}
+  try{await copyText(allCandidatesAnalysisText());button.textContent='복사 완료';setTimeout(()=>{button.textContent=original},1500)}catch(error){alert('복사 실패: '+error.message)}
 }
 function appendCandidateRow(body,item,perspective='long'){
   const row=document.createElement('tr');
@@ -426,7 +493,7 @@ function appendCandidateRow(body,item,perspective='long'){
       {text:flowAmountText(item,'foreign_net_buy_100m'),cls:changeClass(item.foreign_net_buy_100m)},{text:flowAmountText(item,'institution_net_buy_100m'),cls:changeClass(item.institution_net_buy_100m)},
       {text:fmt(item.current)},{text:fmt(target)},{text:signedPct(distance),cls:changeClass(distance)},{text:fmt(item.atr20)+(Number.isFinite(Number(item.atr_pct))?' · '+pct(item.atr_pct):'')},{text:String(item.score??'-')},{text:marketSourceText(item)}
     ];
-  values.forEach(value=>{const cell=document.createElement('td');cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;if(value.stockLink){cell.appendChild(stockAnchor(item));if(item.stage!=='ERROR'){candidateStatusBadges(item,perspective).forEach(state=>{const node=document.createElement('span');node.className='stateBadge '+state.cls;node.textContent=state.text;cell.appendChild(node)});const choose=document.createElement('button');choose.className='button selectCandidate';choose.type='button';choose.textContent='선택';choose.addEventListener('click',event=>{event.stopPropagation();selectCandidate(item,{side:perspective})});const copy=document.createElement('button');copy.className='button copyCandidate';copy.type='button';copy.textContent='복사';copy.title='AI 분석용 텍스트 복사';copy.addEventListener('click',event=>{event.stopPropagation();copyCandidateForAi(item,perspective,copy)});cell.append(choose,copy)}}else cell.textContent=value.text;row.appendChild(cell)});
+  values.forEach(value=>{const cell=document.createElement('td');cell.className=value.cls||'';if(value.span)cell.colSpan=value.span;if(value.stockLink){cell.appendChild(stockAnchor(item));if(item.stage!=='ERROR'){candidateStatusBadges(item,perspective).forEach(state=>{const node=document.createElement('span');node.className='stateBadge '+state.cls;node.textContent=state.text;cell.appendChild(node)});const choose=document.createElement('button');choose.className='button selectCandidate';choose.type='button';choose.textContent='선택';choose.addEventListener('click',event=>{event.stopPropagation();selectCandidate(item,{side:perspective})});cell.append(choose)}}else cell.textContent=value.text;row.appendChild(cell)});
   if(item.stage!=='ERROR')row.addEventListener('click',()=>showCandidate(item,{populateTracking:false,persistSelection:false,detailPerspective:perspective}));body.appendChild(row);
 }
 function sortValue(item,key){
@@ -715,7 +782,7 @@ renderPrealertPct();
 document.querySelectorAll('.sortButton').forEach(button=>button.addEventListener('click',()=>sortCandidates(button.dataset.sort)));
 document.querySelectorAll('[data-remove-filter]').forEach(button=>button.addEventListener('click',()=>setFilter(button.dataset.removeFilter==='avgValue10Filter'?'avgValue10':button.dataset.removeFilter==='investorFilter'?'investor':'todayChange',false)));
 el('addAvgValue10').addEventListener('click',()=>setFilter('avgValue10',true));el('addInvestor').addEventListener('click',()=>setFilter('investor',true));el('addTodayChange').addEventListener('click',()=>setFilter('todayChange',true));
-el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('liveBtn').addEventListener('click',toggleRealtime);el('marketScanBtn').addEventListener('click',startFullMarketScan);
+el('refreshBtn').addEventListener('click',()=>runCycle({showErrors:true}));el('copyAllBtn').addEventListener('click',event=>copyAllCandidatesForAi(event.currentTarget));el('liveBtn').addEventListener('click',toggleRealtime);el('marketScanBtn').addEventListener('click',startFullMarketScan);
 el('scanScope').addEventListener('change',()=>{updateScanVisibility();loadCandidates().catch(error=>el('scanProgress').textContent=error.message)});
 ['marketScope','includeEtf','minMarketCap','minOperatingProfit','shortMaxMarketCap','shortMaxOperatingProfit','prealertPct','minAvgValue10','investorMode','minInvestorBuy','minTodayChange','provider'].forEach(id=>el(id).addEventListener('change',saveScanConfig));
 el('prealertPct').addEventListener('input',renderPrealertPct);el('gSymbol').addEventListener('input',queueSymbolSearch);document.addEventListener('click',event=>{if(!event.target.closest('.symbolSearchWrap'))renderSymbolSuggestions([])});
