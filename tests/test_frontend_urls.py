@@ -249,6 +249,9 @@ def test_short_fundamental_filters_and_ai_copy_are_exposed():
     source = INDEX.read_text(encoding="utf-8")
     assert 'id="shortMaxMarketCap"' in source
     assert 'id="shortMaxOperatingProfit"' in source
+    assert 'class="field shortFilter"><label for="shortMaxMarketCap">숏 전용 · 최대 시가총액' in source
+    assert 'class="field shortFilter"><label for="shortMaxOperatingProfit">숏 전용 · 최대 영업이익' in source
+    assert 'class="field fullMarketField"><label for="shortMaxMarketCap"' not in source
     assert "short_max_market_cap_100m:num('shortMaxMarketCap')" in source
     assert "short_max_operating_profit_100m:num('shortMaxOperatingProfit')" in source
     assert "function aiAnalysisText(item,perspective='long')" in source
