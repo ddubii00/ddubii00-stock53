@@ -219,6 +219,7 @@ def test_full_scan_filters_fundamentals_before_fetching_price_history(monkeypatc
             market="KOSPI",
             min_market_cap_100m=500,
             min_operating_profit_100m=50,
+            short_max_market_cap_100m=0,
             signal_mode="actionable",
         ),
         market_provider=provider,
@@ -239,6 +240,7 @@ def test_full_scan_visible_stage_uses_current_price_not_intraday_high(monkeypatc
             market="KOSPI",
             min_market_cap_100m=500,
             min_operating_profit_100m=50,
+            short_max_market_cap_100m=0,
             signal_mode="actionable",
             prealert_pct=1.5,
             avg_value10_filter_enabled=False,
@@ -256,6 +258,8 @@ def test_full_scan_returns_short_prealert_and_breakout_candidates(monkeypatch, t
         market="KOSPI",
         min_market_cap_100m=500,
         min_operating_profit_100m=50,
+        short_max_market_cap_100m=850,
+        short_max_operating_profit_100m=50,
         avg_value10_filter_enabled=False,
     )
     prealerts, _ = scan_full_market(
@@ -268,9 +272,10 @@ def test_full_scan_returns_short_prealert_and_breakout_candidates(monkeypatch, t
         market_provider=ShortSignalDemo(0.999),
         universe_provider=FilterUniverse(),
     )
-    assert {item["symbol"] for item in prealerts} == {"000660", "005380"}
+    assert {item["symbol"] for item in prealerts} == {"005380"}
     assert all(item["short_stage"] == "SHORT_PREALERT" for item in prealerts)
-    assert {item["symbol"] for item in breakouts} == {"000660", "005380"}
+    assert all(item["short_fundamental_pass"] is True for item in prealerts)
+    assert {item["symbol"] for item in breakouts} == {"005380"}
     assert all(item["short_stage"] == "SHORT_BREAKOUT" for item in breakouts)
 
 
@@ -282,6 +287,7 @@ def test_full_scan_breakout_and_optional_filters(monkeypatch, tmp_path):
         market="KOSPI",
         min_market_cap_100m=500,
         min_operating_profit_100m=50,
+        short_max_market_cap_100m=0,
         signal_mode="breakout",
     )
 
@@ -339,6 +345,7 @@ def test_full_scan_keeps_candidate_when_optional_investor_display_is_unavailable
             market="KOSPI",
             min_market_cap_100m=500,
             min_operating_profit_100m=50,
+            short_max_market_cap_100m=0,
             signal_mode="breakout",
             investor_filter_enabled=False,
         ),
@@ -360,6 +367,7 @@ def test_full_scan_etf_bypasses_fundamentals_market_cap_and_investor_filters(mon
             market="KOSPI",
             min_market_cap_100m=500,
             min_operating_profit_100m=1_000_000,
+            short_max_market_cap_100m=0,
             include_etf=True,
             signal_mode="actionable",
             avg_value10_filter_enabled=False,

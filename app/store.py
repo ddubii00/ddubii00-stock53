@@ -93,6 +93,7 @@ def init_db() -> None:
               universe_count INTEGER NOT NULL DEFAULT 0,
               fundamentals_passed INTEGER NOT NULL DEFAULT 0,
               stock_fundamentals_passed INTEGER NOT NULL DEFAULT 0,
+              short_fundamentals_passed INTEGER NOT NULL DEFAULT 0,
               etf_scanned INTEGER NOT NULL DEFAULT 0,
               error_count INTEGER NOT NULL DEFAULT 0,
               message TEXT NOT NULL DEFAULT '',
@@ -175,6 +176,7 @@ def init_db() -> None:
                 "kospi_count",
                 "kosdaq_count",
                 "stock_fundamentals_passed",
+                "short_fundamentals_passed",
                 "etf_scanned",
             ):
                 if column not in scan_columns:
@@ -200,15 +202,11 @@ def get_position(symbol: str) -> dict | None:
 
 
 def close_position(symbol: str) -> bool:
-    """Mark a position closed so it disappears from active monitoring."""
+    """Permanently remove a completed position from active state."""
 
     init_db()
     with closing(connect()) as conn:
-        cursor = conn.execute(
-            "UPDATE positions SET status='CLOSED', updated_at=CURRENT_TIMESTAMP "
-            "WHERE symbol=? AND status='ACTIVE'",
-            (symbol,),
-        )
+        cursor = conn.execute("DELETE FROM positions WHERE symbol=?", (symbol,))
         conn.commit()
         return cursor.rowcount > 0
 
@@ -525,6 +523,7 @@ def update_full_market_scan(scan_id: int, **fields) -> None:
         "universe_count",
         "fundamentals_passed",
         "stock_fundamentals_passed",
+        "short_fundamentals_passed",
         "etf_scanned",
         "error_count",
         "message",
@@ -562,7 +561,7 @@ def finish_full_market_scan(scan_id: int, items: list[dict], **summary) -> None:
             SET status='COMPLETED',phase='completed',processed=?,total=?,
                 listed_count=?,stock_count=?,etf_count=?,kospi_count=?,kosdaq_count=?,
                 universe_count=?,fundamentals_passed=?,stock_fundamentals_passed=?,
-                etf_scanned=?,error_count=?,message=?,finished_at=?
+                short_fundamentals_passed=?,etf_scanned=?,error_count=?,message=?,finished_at=?
             WHERE id=?
             """,
             (
@@ -576,6 +575,7 @@ def finish_full_market_scan(scan_id: int, items: list[dict], **summary) -> None:
                 int(summary.get("universe_count", 0)),
                 int(summary.get("fundamentals_passed", 0)),
                 int(summary.get("stock_fundamentals_passed", 0)),
+                int(summary.get("short_fundamentals_passed", 0)),
                 int(summary.get("etf_scanned", 0)),
                 int(summary.get("error_count", 0)),
                 summary.get("message", f"후보 {len(items)}개 선정"),

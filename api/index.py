@@ -92,6 +92,8 @@ class FullMarketScanIn(BaseModel):
     market: str = Field(default="ALL", pattern="^(ALL|KOSPI|KOSDAQ)$")
     min_market_cap_100m: float = Field(default=500, ge=0)
     min_operating_profit_100m: float = 50
+    short_max_market_cap_100m: float = Field(default=5_000, ge=0)
+    short_max_operating_profit_100m: float = 50
     include_etf: bool = False
     signal_mode: str = Field(default="prealert", pattern="^(prealert|breakout|actionable)$")
     prealert_pct: float = Field(default=1.0, ge=0, le=100)
@@ -554,4 +556,4 @@ def position_close(symbol: str):
     normalized = _valid_symbol(symbol)
     if not build_position_state_store().close(normalized):
         raise HTTPException(status_code=404, detail="ACTIVE position not found")
-    return {"ok": True, "symbol": normalized, "status": "CLOSED"}
+    return {"ok": True, "symbol": normalized, "status": "DELETED"}

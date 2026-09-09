@@ -156,14 +156,15 @@ def test_out_of_range_live_candidates_are_separate_from_prealert():
     assert "renderGroup('prealertBody',prealerts" in source
 
 
-def test_investor_flow_is_split_and_labeled_with_its_basis_date():
+def test_investor_flow_is_split_and_basis_remains_available_for_copy():
     source = INDEX.read_text(encoding="utf-8")
     assert 'data-sort="foreign_net_buy_100m">외인(억)' in source
     assert 'data-sort="institution_net_buy_100m">기관(억)' in source
-    assert "<th>수급 기준</th>" in source
+    assert "<th>수급 기준</th>" not in source
     assert "장 종료 후 확정" in source
     assert "item.investor_date" in source
     assert "fetchJson('/api/investor-flows?'" in source
+    assert "source==='kis'&&Math.max(Math.abs(foreign),Math.abs(institution))<0.05" in source
 
 
 def test_candidate_table_shows_atr_and_current_state_badges():
@@ -185,7 +186,8 @@ def test_oracle_labels_naver_as_kis_fallback():
 
 def test_candidate_requires_explicit_select_button_and_keeps_market_details():
     source = INDEX.read_text(encoding="utf-8")
-    assert "choose.textContent=(isShort?'숏':'롱')+' 선택'" in source
+    assert "choose.textContent='선택'" in source
+    assert "숏 선택" not in source
     assert "selectCandidate(item,{side:perspective})" in source
     assert "detailPerspective:perspective" in source
     assert "selectionSide:side,detailPerspective:side" in source
@@ -222,9 +224,8 @@ def test_amounts_are_entered_and_displayed_in_manwon():
     assert "el('gRiskBudget').textContent=manwon(data.risk_budget)" in source
 
 
-def test_long_badge_short_guide_and_atr_basis_are_visible():
+def test_direction_specific_guide_and_atr_basis_are_visible():
     source = INDEX.read_text(encoding="utf-8")
-    assert "badge.textContent=isShort?'숏':'롱'" in source
     assert "숏 포지션 · 하락 매매 가이드" in source
     assert "최초 숏 Entry" in source
     assert "현재 ATR20" in source
@@ -233,6 +234,32 @@ def test_long_badge_short_guide_and_atr_basis_are_visible():
     assert "renderShortGuide({...data,name:trackingName||data.name})" in source
     assert "if(data.side!=='short')return" in source
     assert "document.querySelectorAll('.shortOnly')" in source
+
+
+def test_candidate_table_uses_sticky_name_and_compact_columns():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "th:first-child,td:first-child{text-align:left;position:sticky;left:0" in source
+    assert 'data-sort="asset_type">유형' not in source
+    assert 'data-sort="stage">상태' not in source
+    assert 'data-sort="short_stage">상태' not in source
+    assert source.count('colspan="14"') == 6
+
+
+def test_short_fundamental_filters_and_ai_copy_are_exposed():
+    source = INDEX.read_text(encoding="utf-8")
+    assert 'id="shortMaxMarketCap"' in source
+    assert 'id="shortMaxOperatingProfit"' in source
+    assert "short_max_market_cap_100m:num('shortMaxMarketCap')" in source
+    assert "short_max_operating_profit_100m:num('shortMaxOperatingProfit')" in source
+    assert "function aiAnalysisText(item,perspective='long')" in source
+    assert "copy.textContent='복사'" in source
+    assert "AI 분석용 텍스트 복사" in source
+
+
+def test_delete_does_not_restore_removed_oracle_position_from_local_storage():
+    source = INDEX.read_text(encoding="utf-8")
+    assert "local.filter(item=>item.watch_only&&!serverSymbols.has(item.symbol))" in source
+    assert "청산 완료 · 추적 종목에서 삭제됨" in source
 
 
 def test_quality_explanation_is_visible_and_separate_from_breakout():

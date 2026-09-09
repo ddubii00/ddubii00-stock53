@@ -186,6 +186,62 @@ def test_kis_retries_api_error_before_fallback(monkeypatch):
     assert quote.price == 337_000
 
 
+def test_kis_investor_amounts_convert_million_won_to_won(monkeypatch):
+    monkeypatch.setenv("KIS_APP_KEY", "test-key")
+    monkeypatch.setenv("KIS_APP_SECRET", "test-secret")
+    provider = KisMarketDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "_get_json",
+        lambda *args, **kwargs: {
+            "output": [
+                {
+                    "stck_bsop_date": "20260907",
+                    "stck_clpr": "71800",
+                    "frgn_ntby_qty": "-238100",
+                    "orgn_ntby_qty": "100000",
+                    "frgn_ntby_tr_pbmn": "-17098",
+                    "orgn_ntby_tr_pbmn": "7200",
+                }
+            ]
+        },
+    )
+
+    flow = provider.get_investor_flow("005930")
+
+    assert flow.foreign_net_amount == -17_098_000_000
+    assert flow.institution_net_amount == 7_200_000_000
+    assert flow.estimated_amount is False
+
+
+def test_kis_investor_amount_falls_back_to_quantity_times_close(monkeypatch):
+    monkeypatch.setenv("KIS_APP_KEY", "test-key")
+    monkeypatch.setenv("KIS_APP_SECRET", "test-secret")
+    provider = KisMarketDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "_get_json",
+        lambda *args, **kwargs: {
+            "output": [
+                {
+                    "stck_bsop_date": "20260907",
+                    "stck_clpr": "50000",
+                    "frgn_ntby_qty": "100000",
+                    "orgn_ntby_qty": "-40000",
+                    "frgn_ntby_tr_pbmn": "0",
+                    "orgn_ntby_tr_pbmn": "",
+                }
+            ]
+        },
+    )
+
+    flow = provider.get_investor_flow("005930")
+
+    assert flow.foreign_net_amount == 5_000_000_000
+    assert flow.institution_net_amount == -2_000_000_000
+    assert flow.estimated_amount is True
+
+
 def test_naver_quote_prefers_open_nxt_session_price(monkeypatch):
     provider = NaverMarketDataProvider()
     session = QuoteSession(

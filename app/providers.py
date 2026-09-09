@@ -661,14 +661,43 @@ class KisMarketDataProvider:
         if not rows:
             raise RuntimeError(f"KIS returned no investor flow for {symbol}")
         row = max(rows, key=lambda item: str(item.get("stck_bsop_date") or ""))
+        foreign_qty = _number(row.get("frgn_ntby_qty"))
+        institution_qty = _number(row.get("orgn_ntby_qty"))
+        close = _number(row.get("stck_clpr"))
+        foreign_raw = row.get("frgn_ntby_tr_pbmn")
+        institution_raw = row.get("orgn_ntby_tr_pbmn")
+        if all(
+            value in (None, "")
+            for value in (
+                foreign_raw,
+                institution_raw,
+                row.get("frgn_ntby_qty"),
+                row.get("orgn_ntby_qty"),
+            )
+        ):
+            raise RuntimeError(f"KIS investor flow fields are missing for {symbol}")
+
+        # KIS documents *_ntby_tr_pbmn as an amount in KRW millions.
+        def amount_in_won(raw: object, quantity: float) -> tuple[float, bool]:
+            if raw not in (None, ""):
+                amount = _number(raw) * 1_000_000
+                if amount != 0 or quantity == 0 or close <= 0:
+                    return amount, False
+            return quantity * close, True
+
+        foreign_amount, foreign_estimated = amount_in_won(foreign_raw, foreign_qty)
+        institution_amount, institution_estimated = amount_in_won(
+            institution_raw, institution_qty
+        )
         return InvestorFlow(
             symbol=symbol,
             date=str(row.get("stck_bsop_date") or ""),
-            foreign_net_qty=_number(row.get("frgn_ntby_qty")),
-            institution_net_qty=_number(row.get("orgn_ntby_qty")),
-            foreign_net_amount=_number(row.get("frgn_ntby_tr_pbmn")),
-            institution_net_amount=_number(row.get("orgn_ntby_tr_pbmn")),
+            foreign_net_qty=foreign_qty,
+            institution_net_qty=institution_qty,
+            foreign_net_amount=foreign_amount,
+            institution_net_amount=institution_amount,
             source=self.name,
+            estimated_amount=foreign_estimated or institution_estimated,
         )
 
 

@@ -148,3 +148,19 @@ def test_position_persists_selected_exit_strategy(tmp_path, monkeypatch):
         }
     )
     assert store.get_position("000660")["exit_strategy"] == "ma_staged"
+
+
+def test_completed_position_is_deleted_instead_of_left_as_closed(tmp_path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "positions-delete.db"))
+    store.save_position(
+        {
+            "symbol": "000660",
+            "entry_price": 300_000,
+            "n_at_entry": 12_000,
+            "filled_units": 1,
+        }
+    )
+
+    assert store.close_position("000660") is True
+    assert store.get_position("000660") is None
+    assert store.close_position("000660") is False
