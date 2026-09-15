@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from app.strategy import Bar, analyze, atr
+from app.strategy import Bar, analyze, analyze_55d, atr
 
 
 def fresh_bars(n: int = 130):
@@ -187,3 +187,78 @@ def test_avg_volume20_uses_only_last_twenty_completed_bars():
     r = analyze(b, 149, 300_000, min_score=0)
     assert r.avg_volume20 == 250_000
     assert r.volume_ratio == pytest.approx(1.2)
+
+
+def system2_bars(count: int = 56) -> list[Bar]:
+    return [
+        Bar(high=200, low=100, close=150, volume=10_000, value=30_000_000_000)
+        for _ in range(count)
+    ]
+
+
+def test_long_55d_prealert_and_breakout_use_same_configured_range():
+    bars = system2_bars()
+    inside = analyze_55d(bars, current=197, n=10, prealert_pct=1.5)
+    outside = analyze_55d(bars, current=196.99, n=10, prealert_pct=1.5)
+    breakout = analyze_55d(bars, current=200.01, n=10, prealert_pct=1.5)
+    assert inside["distance55_pct"] == pytest.approx(1.5)
+    assert inside["stage55"] == "PREALERT"
+    assert outside["stage55"] == "WATCH"
+    assert breakout["stage55"] == "BREAKOUT"
+
+
+def test_short_55d_prealert_and_breakout_use_same_configured_range():
+    bars = system2_bars()
+    inside = analyze_55d(bars, current=101.5, n=10, prealert_pct=1.5)
+    outside = analyze_55d(bars, current=101.51, n=10, prealert_pct=1.5)
+    breakout = analyze_55d(bars, current=99.99, n=10, prealert_pct=1.5)
+    assert inside["short_distance55_pct"] == pytest.approx(1.5)
+    assert inside["short_stage55"] == "SHORT_PREALERT"
+    assert outside["short_stage55"] == "SHORT_WATCH"
+    assert breakout["short_stage55"] == "SHORT_BREAKOUT"
+
+
+def test_55d_window_is_exactly_previous_fifty_five_completed_sessions():
+    bars = [Bar(high=999, low=1, close=100)] + system2_bars(55)
+    result = analyze_55d(bars, current=197, n=10, prealert_pct=2)
+    assert result["breakout55"] == 200
+    assert result["short_entry55"] == 100
+
+
+def test_today_high_is_metadata_not_part_of_55d_target_or_active_stage():
+    result = analyze_55d(
+        system2_bars(), current=198, n=10, prealert_pct=1, today_high=999
+    )
+    assert result["breakout55"] == 200
+    assert result["intraday_broke55"] is True
+    assert result["stage55"] == "PREALERT"
+
+
+def test_55d_insufficient_history_is_explicit_na_not_zero():
+    result = analyze_55d(system2_bars(54), current=150, n=10, prealert_pct=1)
+    assert result["stage55"] == "N/A"
+    assert result["short_stage55"] == "N/A"
+    assert result["breakout55"] is None
+    assert result["short_entry55"] is None
+
+
+def test_55d_yesterday_breakout_is_not_a_fresh_unit_one_signal():
+    bars = system2_bars()
+    bars[-1] = Bar(high=201, low=99, close=150)
+    result = analyze_55d(bars, current=202, n=10, prealert_pct=1)
+    assert result["yesterday_broke55"] is True
+    assert result["stage55"] == "FILTERED"
+    assert result["yesterday_short_broke55"] is True
+    assert result["short_stage55"] == "SHORT_FILTERED"
+
+
+def test_55d_system2_exit_stop_and_six_unit_levels():
+    bars = system2_bars()
+    bars[-20] = Bar(high=220, low=90, close=150)
+    result = analyze_55d(bars, current=198, n=10, prealert_pct=2)
+    assert result["exit20"] == 90
+    assert result["short_exit20"] == 220
+    assert result["initial_stop55"] == 200
+    assert result["add6_55"] == 245
+    assert result["short_initial_stop55"] == 110
+    assert result["short_add6_55"] == 65

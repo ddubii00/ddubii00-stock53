@@ -36,21 +36,32 @@ def _sizing() -> dict:
 
 
 def _candidate_message(
-    symbol: str, price: float, day_high: float | None, result: TurtleResult
+    symbol: str,
+    price: float,
+    day_high: float | None,
+    day_low: float | None,
+    result: TurtleResult,
+    *,
+    label: str,
+    target: float,
+    add: float,
+    stop: float,
+    exit_price: float,
+    distance: float,
 ) -> str:
     sizing = _sizing()
     quantity, amount, risk_budget = calculate_unit_qty(
-        price=result.breakout20,
+        price=target,
         n_at_entry=result.atr20,
         **sizing,
     )
     return (
-        f"[TURTLE {result.stage}]\n"
+        f"[TURTLE {label}]\n"
         f"{symbol}\n"
-        f"현재가 {fmt(price)} / 오늘 고가 {fmt(day_high)} / 조건가 {fmt(result.breakout20)}\n"
-        f"다음 ADD {fmt(result.add2)} / STOP {fmt(result.initial_stop)} / EXIT {fmt(result.exit10)}\n"
+        f"현재가 {fmt(price)} / 오늘 고가 {fmt(day_high)} / 오늘 저가 {fmt(day_low)} / 조건가 {fmt(target)}\n"
+        f"다음 ADD {fmt(add)} / STOP {fmt(stop)} / EXIT {fmt(exit_price)}\n"
         f"제안 {quantity:,}주 · 약 {fmt(amount)} / Risk budget {fmt(risk_budget)}\n"
-        f"거리 {result.distance_pct:.2f}% · ATR20 {fmt(result.atr20)} · Quality {result.score}"
+        f"거리 {distance:.2f}% · ATR20 {fmt(result.atr20)} · Quality {result.score}"
     )
 
 
@@ -90,12 +101,31 @@ def monitor_once(
                 min_score=int(os.getenv("MIN_SCORE", "55")),
                 today_high=snapshot.quote.day_high,
             )
-            if result.stage in {"PREALERT", "BREAKOUT"}:
-                event_key = f"candidate:{symbol}:{result.breakout20:.4f}:{result.stage}"
-                if event_once(event_key, symbol, result.stage):
+            signal_specs = (
+                (result.stage, "LONG 20D", result.breakout20, result.add2, result.initial_stop, result.exit10, result.distance_pct),
+                (result.short_stage, "SHORT 20D", result.short_entry20, result.short_add2, result.short_initial_stop, result.short_exit10, result.short_distance_pct),
+                (result.stage55, "LONG 55D", result.breakout55, result.add2_55, result.initial_stop55, result.exit20, result.distance55_pct),
+                (result.short_stage55, "SHORT 55D", result.short_entry55, result.short_add2_55, result.short_initial_stop55, result.short_exit20, result.short_distance55_pct),
+            )
+            for stage, system_label, target, add, stop, exit_price, distance in signal_specs:
+                if stage not in {"PREALERT", "BREAKOUT", "SHORT_PREALERT", "SHORT_BREAKOUT"} or target is None:
+                    continue
+                signal_type = f"{system_label} {stage}"
+                event_key = f"candidate:{symbol}:{system_label}:{float(target):.4f}:{stage}"
+                if event_once(event_key, symbol, signal_type):
                     signal_notifier.send(
                         _candidate_message(
-                            symbol, snapshot.quote.price, snapshot.quote.day_high, result
+                            symbol,
+                            snapshot.quote.price,
+                            snapshot.quote.day_high,
+                            snapshot.quote.day_low,
+                            result,
+                            label=signal_type,
+                            target=float(target),
+                            add=float(add),
+                            stop=float(stop),
+                            exit_price=float(exit_price),
+                            distance=float(distance),
                         )
                     )
         except Exception as exc:
@@ -115,6 +145,7 @@ def monitor_once(
                 n_at_entry=position["n_at_entry"],
                 filled_units=position["filled_units"],
                 side=position.get("side", "long"),
+                system_period=int(position.get("system_period", 20)),
                 fill_prices=position.get("fill_prices", []),
                 previous_stop=position.get("common_stop"),
                 exit_strategy=position.get("exit_strategy", "turtle"),

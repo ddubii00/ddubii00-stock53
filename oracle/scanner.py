@@ -22,9 +22,9 @@ def _env_bool(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _message(item: dict) -> str:
+def _message(item: dict, *, label: str, target_key: str, add_key: str, stop_key: str, exit_key: str) -> str:
     quantity, amount, risk_budget = calculate_unit_qty(
-        price=float(item["breakout20"]),
+        price=float(item[target_key]),
         n_at_entry=float(item["atr20"]),
         sizing_mode=os.getenv("SIZING_MODE", "fixed"),
         fixed_unit_amount=float(os.getenv("FIXED_UNIT_AMOUNT", "10000000")),
@@ -32,11 +32,11 @@ def _message(item: dict) -> str:
         risk_pct=float(os.getenv("RISK_PCT", "0.5")),
     )
     return (
-        f"[TURTLE {item['stage']}]\n"
+        f"[TURTLE {label}]\n"
         f"{item.get('name') or item['symbol']} ({item['symbol']})\n"
         f"현재가 {_fmt(item.get('current'))} / 오늘 고가 {_fmt(item.get('today_high'))} "
-        f"/ 조건가 {_fmt(item.get('breakout20'))}\n"
-        f"다음 ADD {_fmt(item.get('add2'))} / STOP {_fmt(item.get('initial_stop'))} / EXIT {_fmt(item.get('exit10'))}\n"
+        f"/ 오늘 저가 {_fmt(item.get('today_low'))} / 조건가 {_fmt(item.get(target_key))}\n"
+        f"다음 ADD {_fmt(item.get(add_key))} / STOP {_fmt(item.get(stop_key))} / EXIT {_fmt(item.get(exit_key))}\n"
         f"시총 {float(item.get('market_cap_100m') or 0):,.0f}억원 / "
         f"영업이익 {float(item.get('operating_profit_100m') or 0):,.0f}억원\n"
         f"제안 {quantity:,}주 · 약 {_fmt(amount)} / Risk budget {_fmt(risk_budget)}\n"
@@ -76,12 +76,33 @@ def scan_once() -> dict:
         raise RuntimeError(scan["message"] if scan else "scan result was not saved")
 
     notifier = build_notifier()
+    signal_specs = (
+        ("stage", "breakout20", "add2", "initial_stop", "exit10", "LONG 20D"),
+        ("short_stage", "short_entry20", "short_add2", "short_initial_stop", "short_exit10", "SHORT 20D"),
+        ("stage55", "breakout55", "add2_55", "initial_stop55", "exit20", "LONG 55D"),
+        ("short_stage55", "short_entry55", "short_add2_55", "short_initial_stop55", "short_exit20", "SHORT 55D"),
+    )
     for item in scan["items"]:
-        if item.get("stage") not in {"PREALERT", "BREAKOUT"}:
-            continue
-        event_key = f"candidate:{item['symbol']}:{float(item['breakout20']):.4f}:{item['stage']}"
-        if event_once(event_key, item["symbol"], item["stage"]):
-            notifier.send(_message(item))
+        for stage_key, target_key, add_key, stop_key, exit_key, system_label in signal_specs:
+            stage = str(item.get(stage_key) or "")
+            if stage not in {"PREALERT", "BREAKOUT", "SHORT_PREALERT", "SHORT_BREAKOUT"}:
+                continue
+            target = item.get(target_key)
+            if target is None:
+                continue
+            signal_type = f"{system_label} {stage}"
+            event_key = f"candidate:{item['symbol']}:{target_key}:{float(target):.4f}:{stage}"
+            if event_once(event_key, item["symbol"], signal_type):
+                notifier.send(
+                    _message(
+                        item,
+                        label=signal_type,
+                        target_key=target_key,
+                        add_key=add_key,
+                        stop_key=stop_key,
+                        exit_key=exit_key,
+                    )
+                )
     return scan
 
 

@@ -5,7 +5,7 @@ import re
 import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -55,6 +55,7 @@ class ScanIn(BaseModel):
     current: float = Field(gt=0)
     current_volume: float = Field(default=0, ge=0)
     today_high: float | None = Field(default=None, gt=0)
+    today_low: float | None = Field(default=None, gt=0)
     market_return20: float = 0
     market_return60: float = 0
     bars: list[BarIn] = Field(min_length=61)
@@ -65,6 +66,7 @@ class GuideIn(BaseModel):
     name: str = ""
     entry_price: float = Field(gt=0)
     side: str = Field(default="long", pattern="^(long|short)$")
+    system_period: Literal[20, 55] = 20
     n_at_entry: float | None = Field(default=None, gt=0)
     fill_prices: list[PositivePrice] = Field(default_factory=list, max_length=6)
     filled_units: int = Field(default=0, ge=0, le=6)
@@ -374,6 +376,7 @@ def candidates(
                 name=DEFAULT_SYMBOLS.get(symbol, symbol),
                 current=snapshot.quote.price,
                 today_high=snapshot.quote.day_high,
+                today_low=snapshot.quote.day_low,
                 today_change_pct=today_change_pct,
                 source=snapshot.quote.source,
                 signal_date=snapshot.as_of_date,
@@ -447,7 +450,13 @@ def scan(payload: ScanIn):
         today_high=payload.today_high,
     )
     response = result.to_dict()
-    response.update(symbol=payload.symbol, name=payload.name, current=payload.current)
+    response.update(
+        symbol=payload.symbol,
+        name=payload.name,
+        current=payload.current,
+        today_high=payload.today_high,
+        today_low=payload.today_low,
+    )
     return response
 
 
@@ -470,6 +479,7 @@ def _build_guide(payload: GuideIn) -> dict:
         exit_strategy=payload.exit_strategy,
         prealert_pct=payload.prealert_pct,
         side=payload.side,
+        system_period=payload.system_period,
         fill_prices=payload.fill_prices,
     )
     response = guide.to_dict()
@@ -498,6 +508,7 @@ def guide_get(
     filled_units: int = 0,
     exit_strategy: str = "turtle",
     side: str = "long",
+    system_period: int = 20,
     provider: str = "demo",
 ):
     try:
@@ -509,6 +520,7 @@ def guide_get(
                 filled_units=filled_units,
                 exit_strategy=exit_strategy,
                 side=side,
+                system_period=system_period,
                 provider=provider,
             )
         )

@@ -63,6 +63,30 @@ class TurtleResult:
     short_add6: float
     short_initial_stop: float
     short_exit10: float
+    breakout55: float | None
+    distance55_pct: float | None
+    yesterday_broke55: bool | None
+    intraday_broke55: bool
+    stage55: str
+    target_buy55: float | None
+    add2_55: float | None
+    add3_55: float | None
+    add4_55: float | None
+    add5_55: float | None
+    add6_55: float | None
+    initial_stop55: float | None
+    exit20: float | None
+    short_stage55: str
+    short_entry55: float | None
+    short_distance55_pct: float | None
+    yesterday_short_broke55: bool | None
+    short_add2_55: float | None
+    short_add3_55: float | None
+    short_add4_55: float | None
+    short_add5_55: float | None
+    short_add6_55: float | None
+    short_initial_stop55: float | None
+    short_exit20: float | None
     reasons: list[str]
 
     def to_dict(self) -> dict:
@@ -94,6 +118,111 @@ def _return(closes: Sequence[float], period: int) -> float:
     if len(closes) <= period or closes[-period - 1] <= 0:
         return 0.0
     return closes[-1] / closes[-period - 1] - 1.0
+
+
+def analyze_55d(
+    bars: Sequence[Bar],
+    *,
+    current: float,
+    n: float,
+    prealert_pct: float,
+    today_high: float | None = None,
+) -> dict:
+    """Return independent Turtle System-2 entry and exit fields.
+
+    ``bars`` contains completed sessions only.  Fewer than 55 completed bars
+    produces explicit N/A fields so a new listing can still retain its
+    existing System-1 result without inventing a zero-valued 55-day channel.
+    """
+
+    if len(bars) < 55:
+        return {
+            "breakout55": None,
+            "distance55_pct": None,
+            "yesterday_broke55": None,
+            "intraday_broke55": False,
+            "stage55": "N/A",
+            "target_buy55": None,
+            "add2_55": None,
+            "add3_55": None,
+            "add4_55": None,
+            "add5_55": None,
+            "add6_55": None,
+            "initial_stop55": None,
+            "exit20": None,
+            "short_stage55": "N/A",
+            "short_entry55": None,
+            "short_distance55_pct": None,
+            "yesterday_short_broke55": None,
+            "short_add2_55": None,
+            "short_add3_55": None,
+            "short_add4_55": None,
+            "short_add5_55": None,
+            "short_add6_55": None,
+            "short_initial_stop55": None,
+            "short_exit20": None,
+        }
+
+    breakout55 = max(bar.high for bar in bars[-55:])
+    short_entry55 = min(bar.low for bar in bars[-55:])
+    yesterday_broke55 = (
+        bars[-1].high > max(bar.high for bar in bars[-56:-1])
+        if len(bars) >= 56
+        else False
+    )
+    yesterday_short_broke55 = (
+        bars[-1].low < min(bar.low for bar in bars[-56:-1])
+        if len(bars) >= 56
+        else False
+    )
+    distance55_pct = (breakout55 - current) / breakout55 * 100.0
+    short_distance55_pct = (current - short_entry55) / short_entry55 * 100.0
+    intraday_broke55 = bool(today_high is not None and today_high >= breakout55)
+
+    if yesterday_broke55:
+        stage55 = "FILTERED"
+    elif current >= breakout55:
+        stage55 = "BREAKOUT"
+    elif 0.0 < distance55_pct <= prealert_pct + 1e-9:
+        stage55 = "PREALERT"
+    else:
+        stage55 = "WATCH"
+
+    if yesterday_short_broke55:
+        short_stage55 = "SHORT_FILTERED"
+    elif current <= short_entry55:
+        short_stage55 = "SHORT_BREAKOUT"
+    elif 0.0 < short_distance55_pct <= prealert_pct + 1e-9:
+        short_stage55 = "SHORT_PREALERT"
+    else:
+        short_stage55 = "SHORT_WATCH"
+
+    return {
+        "breakout55": breakout55,
+        "distance55_pct": distance55_pct,
+        "yesterday_broke55": yesterday_broke55,
+        "intraday_broke55": intraday_broke55,
+        "stage55": stage55,
+        "target_buy55": breakout55,
+        "add2_55": breakout55 + 0.5 * n,
+        "add3_55": breakout55 + 1.0 * n,
+        "add4_55": breakout55 + 1.5 * n,
+        "add5_55": breakout55 + 2.0 * n,
+        "add6_55": breakout55 + 2.5 * n,
+        "initial_stop55": breakout55 - 2.0 * n,
+        "exit20": min(bar.low for bar in bars[-20:]),
+        "short_stage55": short_stage55,
+        "short_entry55": short_entry55,
+        "short_distance55_pct": short_distance55_pct,
+        "yesterday_short_broke55": yesterday_short_broke55,
+        "short_add2_55": short_entry55 - 0.5 * n,
+        "short_add3_55": short_entry55 - 1.0 * n,
+        "short_add4_55": short_entry55 - 1.5 * n,
+        "short_add5_55": short_entry55 - 2.0 * n,
+        "short_add6_55": short_entry55 - 2.5 * n,
+        "short_initial_stop55": short_entry55 + 2.0 * n,
+        "short_exit20": max(bar.high for bar in bars[-20:]),
+    }
 
 
 def analyze(
@@ -206,6 +335,14 @@ def analyze(
     else:
         short_stage = "SHORT_WATCH"
 
+    system2 = analyze_55d(
+        bars,
+        current=current,
+        n=n,
+        prealert_pct=prealert_pct,
+        today_high=today_high,
+    )
+
     return TurtleResult(
         breakout20=breakout20,
         distance_pct=distance_pct,
@@ -246,5 +383,6 @@ def analyze(
         short_add6=short_entry20 - 2.5 * n,
         short_initial_stop=short_entry20 + 2.0 * n,
         short_exit10=max(b.high for b in bars[-10:]),
+        **system2,
         reasons=reasons,
     )

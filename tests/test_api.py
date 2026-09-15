@@ -38,6 +38,9 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     assert candidates.json()["items"][0]["source"] == "demo"
     assert candidates.json()["items"][0]["signal_date"]
     assert "latest_completed_session" in candidates.json()["items"][0]
+    assert candidates.json()["items"][0]["breakout55"] is not None
+    assert candidates.json()["items"][0]["short_entry55"] is not None
+    assert "today_low" in candidates.json()["items"][0]
     alphanumeric_quote = client.get("/api/quote/0126z0", params={"provider": "demo"})
     assert alphanumeric_quote.status_code == 200
     assert alphanumeric_quote.json()["symbol"] == "0126Z0"
@@ -55,6 +58,23 @@ def test_required_vercel_routes_work_without_kis_keys(monkeypatch):
     symbols = client.get("/api/symbol-search", params={"q": "삼성", "provider": "demo"})
     assert symbols.status_code == 200
     assert any(item["symbol"] == "005930" for item in symbols.json()["items"])
+
+
+def test_system2_guide_uses_twenty_day_channel_exit():
+    response = client.post(
+        "/api/guide",
+        json={
+            "symbol": "000660",
+            "entry_price": 100_000,
+            "n_at_entry": 5_000,
+            "filled_units": 1,
+            "system_period": 55,
+            "provider": "demo",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["system_period"] == 55
+    assert response.json()["exit_channel_period"] == 20
 
 
 def test_oracle_live_candidate_subset_is_not_limited_to_vercel_default(monkeypatch):

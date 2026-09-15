@@ -309,6 +309,16 @@ def scan_full_market(
         short_volume_pass = result.avg_volume20 >= config.short_min_avg_volume20_10k * 10_000
         long_signal = long_fundamental_pass and long_volume_pass and result.stage in long_stages
         short_signal = short_fundamental_pass and short_volume_pass and result.short_stage in short_stages
+        long55_signal = (
+            long_fundamental_pass
+            and long_volume_pass
+            and result.stage55 in long_stages
+        )
+        short55_signal = (
+            short_fundamental_pass
+            and short_volume_pass
+            and result.short_stage55 in short_stages
+        )
         if (
             long_signal
             and result.stage == "BREAKOUT"
@@ -316,7 +326,14 @@ def scan_full_market(
             and today_change_pct < config.min_today_change_pct
         ):
             long_signal = False
-        if not long_signal and not short_signal:
+        if (
+            long55_signal
+            and result.stage55 == "BREAKOUT"
+            and config.today_change_filter_enabled
+            and today_change_pct < config.min_today_change_pct
+        ):
+            long55_signal = False
+        if not any((long_signal, short_signal, long55_signal, short55_signal)):
             return None
         if (
             config.avg_value10_filter_enabled
@@ -350,6 +367,10 @@ def scan_full_market(
             item["stage"] = "FILTERED"
         if not short_signal:
             item["short_stage"] = "SHORT_FILTERED"
+        if not long55_signal and item["stage55"] != "N/A":
+            item["stage55"] = "FILTERED"
+        if not short55_signal and item["short_stage55"] != "N/A":
+            item["short_stage55"] = "SHORT_FILTERED"
         item.update(
             symbol=member.symbol,
             name=member.name,
@@ -364,6 +385,7 @@ def scan_full_market(
             short_volume_pass=short_volume_pass,
             current=snapshot.quote.price,
             today_high=snapshot.quote.day_high,
+            today_low=snapshot.quote.day_low,
             today_change_pct=today_change_pct,
             source=snapshot.quote.source,
             signal_date=snapshot.as_of_date,
@@ -394,17 +416,27 @@ def scan_full_market(
                 completed += 1
                 report("signals", completed, total, f"신호 계산 {completed:,}/{total:,}")
 
+    def abs_distance(value: object) -> float:
+        try:
+            return abs(float(value))
+        except (TypeError, ValueError):
+            return 999.0
+
     rank = {"PREALERT": 0, "BREAKOUT": 1}
     short_rank = {"SHORT_PREALERT": 0, "SHORT_BREAKOUT": 1}
     items.sort(
         key=lambda item: (
             min(
                 rank.get(item.get("stage", ""), 9),
+                rank.get(item.get("stage55", ""), 9),
                 short_rank.get(item.get("short_stage", ""), 9),
+                short_rank.get(item.get("short_stage55", ""), 9),
             ),
             min(
-                abs(float(item.get("distance_pct", 999))),
-                abs(float(item.get("short_distance_pct", 999))),
+                abs_distance(item.get("distance_pct")),
+                abs_distance(item.get("short_distance_pct")),
+                abs_distance(item.get("distance55_pct")),
+                abs_distance(item.get("short_distance55_pct")),
             ),
             -int(item.get("score", 0)),
         )

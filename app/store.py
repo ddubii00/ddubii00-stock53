@@ -44,6 +44,7 @@ def init_db() -> None:
               symbol TEXT PRIMARY KEY,
               name TEXT NOT NULL DEFAULT '',
               side TEXT NOT NULL DEFAULT 'long',
+              system_period INTEGER NOT NULL DEFAULT 20 CHECK(system_period IN (20,55)),
               entry_price REAL NOT NULL,
               n_at_entry REAL NOT NULL,
               fill_prices_json TEXT NOT NULL DEFAULT '[]',
@@ -136,6 +137,7 @@ def init_db() -> None:
                       symbol TEXT PRIMARY KEY,
                       name TEXT NOT NULL DEFAULT '',
                       side TEXT NOT NULL DEFAULT 'long',
+                      system_period INTEGER NOT NULL DEFAULT 20 CHECK(system_period IN (20,55)),
                       entry_price REAL NOT NULL,
                       n_at_entry REAL NOT NULL,
                       fill_prices_json TEXT NOT NULL DEFAULT '[]',
@@ -150,17 +152,24 @@ def init_db() -> None:
                       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     );
                     INSERT INTO positions(
-                      symbol,name,side,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
+                      symbol,name,side,system_period,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
                       fixed_unit_amount,account_equity,risk_pct,exit_strategy,
                       common_stop,status,updated_at
                     )
                     SELECT
-                      symbol,name,side,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
+                      symbol,name,side,20,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
                       fixed_unit_amount,account_equity,risk_pct,exit_strategy,
                       common_stop,status,updated_at
                     FROM positions_units_v4;
                     DROP TABLE positions_units_v4;
                     """
+                )
+            columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(positions)").fetchall()
+            }
+            if "system_period" not in columns:
+                conn.execute(
+                    "ALTER TABLE positions ADD COLUMN system_period INTEGER NOT NULL DEFAULT 20"
                 )
             scan_columns = {
                 row[1] for row in conn.execute("PRAGMA table_info(full_market_scans)").fetchall()
@@ -254,11 +263,14 @@ def save_position(payload: dict) -> None:
     n_at_entry = float(payload["n_at_entry"])
     filled_units = int(payload.get("filled_units", 0))
     side = str(payload.get("side", "long")).strip().lower()
+    system_period = int(payload.get("system_period", 20))
     fill_prices = [float(value) for value in payload.get("fill_prices", [])]
     if entry_price <= 0 or n_at_entry <= 0 or not 0 <= filled_units <= MAX_POSITION_UNITS:
         raise ValueError("invalid position values")
     if side not in {"long", "short"}:
         raise ValueError("side must be long or short")
+    if system_period not in {20, 55}:
+        raise ValueError("system_period must be 20 or 55")
     if len(fill_prices) > MAX_POSITION_UNITS or any(value <= 0 for value in fill_prices):
         raise ValueError("invalid fill prices")
     fill_prices = fill_prices[:filled_units]
@@ -281,12 +293,13 @@ def save_position(payload: dict) -> None:
         conn.execute(
             """
             INSERT INTO positions(
-              symbol,name,side,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
+              symbol,name,side,system_period,entry_price,n_at_entry,fill_prices_json,filled_units,sizing_mode,
               fixed_unit_amount,account_equity,risk_pct,exit_strategy,common_stop,status,updated_at
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',CURRENT_TIMESTAMP)
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',CURRENT_TIMESTAMP)
             ON CONFLICT(symbol) DO UPDATE SET
               name=excluded.name,
               side=excluded.side,
+              system_period=excluded.system_period,
               entry_price=excluded.entry_price,
               n_at_entry=excluded.n_at_entry,
               fill_prices_json=excluded.fill_prices_json,
@@ -304,6 +317,7 @@ def save_position(payload: dict) -> None:
                 payload["symbol"],
                 payload.get("name", ""),
                 side,
+                system_period,
                 entry_price,
                 n_at_entry,
                 json.dumps(fill_prices),

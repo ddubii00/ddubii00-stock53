@@ -93,7 +93,8 @@ def test_live_mode_rechecks_only_the_initial_full_market_candidates():
     assert "조회 오류 ${errorCount}개(마지막 값 유지·다음 주기 재시도)" in source
     assert "전체시장·재무 재검색 없음" in source
     assert "candidateItems=liveSeedItems.map(item=>({...item}))" in source
-    assert "숏 PREALERT ${shortPrealerts} / BREAKOUT ${shortBreakouts} / 이탈 ${shortWatches}" in source
+    assert "숏 ${shortPrealerts}/${shortBreakouts}/이탈 ${shortWatches}" in source
+    assert "55D 롱 ${prealerts55}/${breakouts55}" in source
 
 
 def test_live_button_is_next_to_manual_full_market_scan_button():
@@ -170,7 +171,7 @@ def test_investor_flow_is_split_and_basis_remains_available_for_copy():
 
 def test_candidate_table_shows_atr_and_current_state_badges():
     source = INDEX.read_text(encoding="utf-8")
-    assert source.count('data-sort="atr20">ATR20(N)') == 6
+    assert source.count('data-sort="atr20">ATR20(N)') == 10
     assert "fmt(item.atr20)" in source
     assert "장중 돌파 후 하회" in source
     assert "접근범위 이탈" in source
@@ -189,12 +190,12 @@ def test_candidate_requires_explicit_select_button_and_keeps_market_details():
     source = INDEX.read_text(encoding="utf-8")
     assert "choose.textContent='선택'" in source
     assert "숏 선택" not in source
-    assert "selectCandidate(item,{side:perspective})" in source
+    assert "selectCandidate(item,{side:view.short?'short':'long',period:view.period,perspective})" in source
     assert "detailPerspective:perspective" in source
-    assert "selectionSide:side,detailPerspective:side" in source
-    assert "function persistCandidateSelection(item,side='long')" in source
+    assert "selectionSide:side,selectionPeriod:Number(period),detailPerspective:detail" in source
+    assert "function persistCandidateSelection(item,side='long',period=20)" in source
     assert "function syncTrackedCandidateSnapshots(items)" in source
-    assert "20D ${short?'신저가':'돌파가'}" in source
+    assert "${period}D ${view.short?'신저가':'돌파가'}" in source
 
 
 def test_selected_guide_supports_symbol_autocomplete_and_six_units():
@@ -202,7 +203,7 @@ def test_selected_guide_supports_symbol_autocomplete_and_six_units():
     assert 'id="symbolSuggestions"' in source
     assert "fetchJson('/api/symbol-search?'" in source
     assert "function chooseSymbolSuggestion(item)" in source
-    assert "{refresh:false,side:el('positionSide').value}" in source
+    assert "{refresh:false,side:el('positionSide').value,period:Number(el('positionSystem').value)}" in source
     assert 'id="gUnits"' in source
     assert '<option value="6">6 Units · 확장 한도</option>' in source
     assert 'id="u5"' in source and 'id="u6"' in source
@@ -243,7 +244,28 @@ def test_candidate_table_uses_sticky_name_and_compact_columns():
     assert 'data-sort="asset_type">유형' not in source
     assert 'data-sort="stage">상태' not in source
     assert 'data-sort="short_stage">상태' not in source
-    assert source.count('colspan="14"') == 6
+    assert source.count('colspan="14"') == 10
+
+
+def test_system2_tables_and_ai_copy_cover_all_55d_groups():
+    source = INDEX.read_text(encoding="utf-8")
+    for element_id in (
+        "prealert55Body",
+        "breakout55Body",
+        "shortPrealert55Body",
+        "shortBreakout55Body",
+    ):
+        assert f'id="{element_id}"' in source
+    for title in (
+        "롱 55D PREALERT",
+        "롱 55D BREAKOUT",
+        "숏 55D PREALERT",
+        "숏 55D BREAKOUT",
+    ):
+        assert title in source
+    assert source.count('id="prealertPct"') == 1
+    assert "오늘 고가 / 오늘 저가" in source
+    assert "${view.exitPeriod}D 청산" in source
 
 
 def test_short_fundamental_filters_and_ai_copy_are_exposed():

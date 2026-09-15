@@ -360,3 +360,48 @@ def test_wait_entry_and_entry_now():
     )
     assert waiting.action == "WAIT_ENTRY"
     assert entering.action == "ENTRY_NOW"
+
+
+def test_system2_position_uses_twenty_day_exit_without_changing_default_system1():
+    history = bars()
+    history[-20] = Bar(high=110_000, low=70_000, close=100_000)
+    system1 = build_position_guide(
+        symbol="000660",
+        bars=history,
+        current=100_000,
+        entry_price=120_000,
+        n_at_entry=10_000,
+        filled_units=1,
+    )
+    system2 = build_position_guide(
+        symbol="000660",
+        bars=history,
+        current=100_000,
+        entry_price=120_000,
+        n_at_entry=10_000,
+        filled_units=1,
+        system_period=55,
+    )
+    assert system1.system_period == 20
+    assert system1.exit_channel_period == 10
+    assert system1.exit10 > 70_000
+    assert system2.system_period == 55
+    assert system2.exit_channel_period == 20
+    assert system2.exit10 == 70_000
+
+
+def test_system2_short_position_uses_twenty_day_high_exit():
+    history = bars()
+    history[-20] = Bar(high=160_000, low=90_000, close=100_000)
+    guide = build_position_guide(
+        symbol="000660",
+        bars=history,
+        current=100_000,
+        entry_price=90_000,
+        n_at_entry=10_000,
+        filled_units=1,
+        side="short",
+        system_period=55,
+    )
+    assert guide.exit_channel_period == 20
+    assert guide.exit10 == 160_000

@@ -1,14 +1,14 @@
 # stock53 Turtle Signal Guide
 
-한국 주식용 Turtle System 1 **시점·수량 가이드**입니다. 후보 탐색, 신규 20일 돌파, 피라미딩, 보호손절, 10일 채널 청산, Oracle Telegram 알림을 다룹니다.
+한국 주식용 Turtle System 1·2 **시점·수량 가이드**입니다. 기존 20일 채널과 신규 55일 채널의 롱·숏 후보 탐색, 피라미딩, 보호손절, 10일/20일 채널 청산, Oracle Telegram 알림을 다룹니다.
 
 > 실제 주문 API는 없습니다. 모든 결과는 사용자가 판단하고 체결을 직접 확정하는 읽기 전용 가이드입니다.
 
 ## 핵심 흐름
 
 ```text
-후보검색 → 1% PREALERT → 20D BREAKOUT → 사용자 진입 확정
-        → 0.5N 추매 → 사용자 추매 확정 → 2N 보호손절 / 10D Low Exit
+후보검색 → 공통 1% PREALERT → 20D/55D BREAKOUT → 사용자 진입 확정
+        → 0.5N 추매 → 사용자 추매 확정 → 2N 보호손절 / 10D·20D 채널 Exit
         → Oracle Telegram
 ```
 
@@ -20,9 +20,14 @@
 - 어제 돌파 기준: `MAX(High[D-2] ... High[D-21])`
 - 어제 돌파 여부: `High[D-1] > 어제 돌파 기준`
 - System 1 Exit: `MIN(Low[D-1] ... Low[D-10])`
+- System 2 롱 진입: `MAX(High[D-1] ... High[D-55])`
+- System 2 숏 진입: `MIN(Low[D-1] ... Low[D-55])`
+- System 2 Exit: 롱 `MIN(Low[D-1] ... Low[D-20])`, 숏 `MAX(High[D-1] ... High[D-20])`
 
 Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에서 제거합니다. 주말·공휴일처럼 오늘 거래가 없으면 provider가 반환한 **가장 최근 개장일**을 D로 삼고, 그날의 종가/고가와 그 직전 완료 일봉들로 신호를 계산합니다. 최근 개장일 봉을 D-1 채널에 다시 넣지 않으므로 휴장일에도 look-ahead나 동일 봉 중복이 없습니다. 화면에는 `검색 기준일 YYYY-MM-DD (최근 개장일)`을 표시합니다. 어제 이미 돌파한 종목은 오늘 신규 Unit #1 후보가 아닙니다.
 화면의 BREAKOUT은 `오늘 현재가 >= 신규 돌파가`로 판정합니다. 전고점을 단 1호가라도 넘으면 돌파이며, 2%나 5% 이상 더 넘어야 하는 조건은 없습니다. 장중 고가가 돌파했더라도 현재가가 다시 내려오면 PREALERT 또는 WATCH로 이동하고 `장중 돌파 후 하회` 배지를 표시합니다. 목표대비 거리는 `(현재가 / 신규 돌파가 - 1) × 100`을 사용합니다.
+
+55D는 같은 OHLCV snapshot과 동일한 현재가 판정식을 재사용합니다. 55거래일 미만이면 `55D_DATA=N/A`로 처리해 55D 결과에서 제외하고 0원 채널을 만들지 않습니다. 20D와 55D는 독립 신호이므로 한 종목이 여러 그룹에 동시에 표시될 수 있으며, 화면의 PREALERT 접근 범위 입력값 하나를 두 기간이 공통으로 사용합니다.
 
 ### 포지션
 
@@ -48,6 +53,7 @@ Naver/KRX/KIS provider는 날짜가 오늘인 부분 일봉을 전략 입력에�
 매도 가이드는 두 모드를 제공합니다.
 
 - `turtle`: 정통 System 1. 고정 익절 없이 직전 10거래일 최저가 이탈 시 전량청산
+- 55D System 2 선택 시: 롱은 직전 20거래일 Low, 숏은 직전 20거래일 High에서 전량청산
 - `ma_staged`: 조기 수익보호용 변형. MA5 이탈 시 50%, MA10 이탈 시 잔여 포지션 정리
 - 어느 모드든 `최근 체결 Unit - 2N` 보호손절과 10D Low 전량청산이 이동평균 기준보다 우선
 
@@ -104,14 +110,14 @@ KOSPI/KOSDAQ 종목목록
 → 숏: 시가총액·최근 확정 연간 영업이익이 각각 최대값 이하
 → 어느 한 방향을 통과한 종목만 KIS/Naver 일봉·현재가 조회
 → 방향별 최소 20거래일 평균거래량(만주)
-→ PREALERT 또는 당일 첫 BREAKOUT
+→ 동일 OHLCV에서 20D·55D 롱/숏 PREALERT 또는 당일 첫 BREAKOUT 동시 계산
 → 선택 필터: 10D 평균거래대금 / 당일 외인·기관 수급 / BREAKOUT 당일 상승률
 → SQLite 결과 snapshot
 ```
 
 기본값은 롱 최소 시가총액 500억원, 롱 최소 영업이익 50억원, 숏 최대 시가총액 5,000억원, 숏 최대 영업이익 50억원, 방향별 최소 20일 평균거래량 0만주(제한 없음), 10일 평균거래대금 500억원이며 UI에서 숫자를 바꿀 수 있습니다. 롱 최소 시가총액은 롱 후보에만 적용되고, 숏 후보에는 숏 최대 시가총액·최대 영업이익·최소 평균거래량만 독립적으로 적용됩니다. 따라서 숏의 초소형 종목을 제외하려면 숏 최소 평균거래량을 설정하면 됩니다. 각 선택 필터의 `×`를 누르면 그 조건을 제외할 수 있습니다. 외인/기관은 각각 또는 합산 순매수액을 설정할 수 있고, `0억원`은 순매수 여부만 확인합니다. 수급 필터를 켜지 않아도 최종 신호 후보에는 외인·기관 값을 조회해 별도 열로 표시합니다. KIS 공식 투자자 데이터는 장 종료 후 제공되므로 가장 최근 확정 거래일 값을 쓰고, Naver 금액은 순매수수량×종가의 추정값을 씁니다. 표의 금액에는 `≈` 접두어를 붙이지 않고, 헤더의 `AI 분석 복사`로 생성되는 전체 후보 텍스트에 기준일·확정/추정·공급자를 포함합니다. ETF에는 시가총액·영업이익·외인/기관 필터를 적용하지 않고 PREALERT/BREAKOUT, 방향별 평균거래량, 거래대금, BREAKOUT 당일 상승률만 적용합니다. ETN은 제외하고 신규·우선주에 쓰이는 영문 혼합 6자리 종목코드는 포함합니다. 화면에는 일반주식/ETF와 KOSPI/KOSDAQ 원천 수, 롱·숏 재무 통과 수를 함께 표시합니다. 재무값은 기본 7일 캐시하고 시세 신호는 새 검색 때 다시 계산합니다.
 
-PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. PREALERT는 `0 < (직전 완료 20거래일 High - 현재가) / High × 100 <= 설정값`일 때만 반환하며, 오늘 고가가 목표에 접근했다가 현재가가 멀어진 종목은 포함하지 않습니다. BREAKOUT은 `현재가 >= 직전 완료 20거래일 High`이면서 어제 이미 돌파하지 않은 종목만 반환합니다. BREAKOUT의 `당일 5% 이상`은 **전고점 대비 돌파폭**이 아니라 **전일 종가 대비 당일 상승률** 선택 필터입니다. 옵션을 꺼두면 상승률과 관계없이 정상 20D 돌파를 찾습니다.
+PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. 이 입력값 하나가 20D와 55D에 똑같이 적용됩니다. 롱 PREALERT는 `0 < (직전 완료 N거래일 High - 현재가) / High × 100 <= 설정값`, 숏 PREALERT는 `0 < (현재가 - 직전 완료 N거래일 Low) / Low × 100 <= 설정값`입니다. 오늘 고가가 목표에 접근했다가 현재가가 멀어진 종목은 활성 PREALERT에 포함하지 않습니다. BREAKOUT은 현재가가 채널을 돌파하고 어제는 이미 돌파하지 않았을 때만 신규 신호입니다. BREAKOUT의 `당일 5% 이상`은 **전고점 대비 돌파폭**이 아니라 **전일 종가 대비 당일 상승률** 선택 필터입니다.
 
 거래대금·수급·당일 상승률 선택 필터를 통과하지 못한 종목은 검색 결과와 Oracle Telegram 알림에 포함하지 않습니다.
 
@@ -122,7 +128,7 @@ PREALERT 접근률은 기본 1%이고 숫자로 변경할 수 있습니다. PREA
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-APP_MODE=oracle DATA_PROVIDER=demo .venv/bin/uvicorn api.index:app --host 127.0.0.1 --port 8000
+APP_MODE=oracle DATA_PROVIDER=demo HOST=127.0.0.1 PORT=8000 .venv/bin/python -m oracle.server
 ```
 
 브라우저: `http://127.0.0.1:8000`
@@ -144,15 +150,15 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - `↻ 새로고침`: 현재 범위의 후보 snapshot과 저장된 추적종목 가이드를 각각 한 번 조회. 전체 상장주식 목록·재무·신호를 처음부터 다시 계산하지 않음
 - `전체시장 새 검색` 옆 `실시간`: 마지막 수동 검색이 찾은 PREALERT/BREAKOUT 종목만 고정 후보군으로 잡아 기본 30초마다 신호를 다시 계산. Oracle은 KIS 우선, Vercel은 브라우저 polling과 fallback provider를 사용하며 전체 종목 목록·재무 필터를 반복 조회하지 않음
 - 최초 검색에서 찾은 후보는 실시간 시작 후 제거하지 않음. 현재가가 설정한 PREALERT 범위 아래로 내려가면 `범위 이탈 추적(WATCH)` 표로 옮겨 계속 추적하며, 일시적 API 오류가 나도 마지막 값을 유지하고 다음 주기에 재시도
-- 현재가가 20D 목표가를 넘으면 PREALERT/WATCH → BREAKOUT으로 이동. 다시 목표가 아래로 내려오면 PREALERT 또는 WATCH로 이동하고 장중 돌파 이력은 초록 배지로 표시
+- 20D와 55D를 각각 롱 PREALERT/BREAKOUT, 숏 PREALERT/BREAKOUT으로 나눈 8개 핵심 그룹 표시. 현재가가 각 목표를 넘나들면 해당 그룹을 다시 판정
 - 후보/시세 간격: `REALTIME_POLL_SECONDS=30`, `QUOTE_POLL_SECONDS=3`. 표시 종목의 현재가·등락률은 최대 30종목씩 나눠 별도 3초 polling으로 갱신하며 중복 fetch는 실행하지 않음
 - 중복 fetch cycle 방지
 - 후보 행 클릭: 위쪽 후보 상세만 미리보기. 종목명은 `stock.naver.com` 해당 종목을 새 탭으로 열며, 종목 옆 `선택` 버튼을 눌러야 `내가 선택한 종목`과 매매 행동 가이드로 추가됨
-- 헤더 `AI 분석 복사`: 현재 검색 조건과 롱·숏 PREALERT/BREAKOUT/범위 이탈 후보 전체의 시세·채널·ATR·재무·수급·Quality·손절/청산 가격을 한 번에 복사해 AI 대화창에서 비교 분석 가능
+- 헤더 `AI 분석 복사`: 20D·55D의 롱·숏 8개 그룹 전체를 현재가, 오늘 고가·저가, 채널, ATR, 2N STOP, Unit #2~#6, 10D/20D 청산, 재무·수급·MA·RS·Quality·Source와 함께 복사
 - 선택 종목의 종목명/코드 입력란에서 `삼성` 같은 일부 이름이나 6자리 코드를 입력하면 KIS 공식 종목 마스터를 우선 검색하고, 실패하면 Naver 종목목록으로 대체. 검색 제안을 클릭하면 현재가·ATR을 다시 조회해 가이드에 반영
 - 검색 범위: `KOSPI/KOSDAQ 전체` 또는 `직접 입력 종목`
 - PREALERT와 BREAKOUT은 한 번에 동시 검색하고 PREALERT 표를 위에, BREAKOUT 표를 아래에 분리. 종목명만 표시하고 등락률은 상승 빨간·하락 파랑으로 표시
-- 목표대비 거리는 `(현재가 ÷ 20D 돌파가 - 1) × 100`으로 표시. 목표가 아래는 음수·파란색, 목표가 위는 양수·빨간색
+- 목표대비 거리는 `(현재가 ÷ 해당 20D/55D 목표가 - 1) × 100`으로 표시. 목표가 아래는 음수·파란색, 목표가 위는 양수·빨간색
 - 외인·기관은 각각 별도 열에 억원 단위로 표시하고 추정값에도 `≈` 접두어는 표시하지 않음. 저장된 스캔에 값이 없으면 `/api/investor-flows`로 표시 종목만 다시 읽기 조회하며, 기준일·확정/추정·공급자는 전체 후보 복사 텍스트에 포함
 - 후보 표에 ATR20(N)과 ATR%를 함께 표시
 - 전체시장 필터: 시장, ETF 추가 여부, 롱 최소 시가총액·최소 영업이익·최소 20D 평균거래량, 숏 최대 시가총액·최대 영업이익·최소 20D 평균거래량, 10D 평균거래대금, 외인/기관 수급, BREAKOUT 당일 상승률
@@ -163,7 +169,7 @@ curl -s -X POST http://127.0.0.1:8000/api/full-market-scans \
 - 전체검색 중복 실행 방지. Oracle 실시간 검색 후보 상한은 `ORACLE_LIVE_SCAN_MAX_SYMBOLS`(기본 200)로 조정 가능하며 상한을 넘으면 화면에 잘림 여부를 표시
 - Vercel 상태: `localStorage`
 - `진입/추매 완료`: 이번 실제 체결가를 입력하고 확인한 뒤에만 `filled_units` 증가. 쉼표로 여러 가격을 입력하면 갭 체결 여러 Unit을 한 번에 확정하며 최대 6 Units
-- 포지션 방향: 롱/숏을 명시적으로 선택·저장. 롱 가이드와 숏 가이드는 동시에 섞어 표시하지 않으며 Oracle SQLite worker도 저장된 방향·실제 체결가를 사용
+- 포지션 방향과 시스템: 롱/숏 및 20D System 1/55D System 2를 명시적으로 선택·저장. System 2는 20D 채널 청산을 사용하며 Oracle SQLite worker도 저장된 방향·기간·실제 체결가를 사용
 - 추적 종목: 여러 종목 추가·변경·보기, 총 투자한도와 계좌 잔고는 만원 단위 입력, 1 Unit은 총액÷6으로 표시, 위험한도(%) 입력. `청산 완료·삭제`는 Oracle SQLite 행과 브라우저 추적 목록을 모두 실제 삭제
 - 현재 전략 행동과 현재 매도 행동 바로 아래에 선택한 종목명·코드를 표시
 - 현재 ATR20은 완료 일봉 기준으로 갱신하되, 진입 후 add/stop/risk 계산은 입력·저장된 Entry 당시 고정 N을 사용
@@ -234,6 +240,64 @@ Oracle page /stock53-7/          + /api/guide  → /stock53-7/api/guide
 
 ## Oracle + KIS + Telegram
 
+이 저장소는 Node.js 앱이 아니라 **Python 3.12 FastAPI 앱**입니다. 따라서 `npm ci`, `npm run build`, `npm start`는 적용 대상이 아니며 Node.js도 필요하지 않습니다. Vercel은 `@vercel/python`, Oracle Ubuntu는 같은 `api.index:app`을 Uvicorn으로 실행합니다.
+
+### Oracle Ubuntu 24.04 직접 실행
+
+```bash
+git pull
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements-oracle.txt
+cp .env.example .env
+APP_MODE=oracle DATA_PROVIDER=auto HOST=127.0.0.1 PORT=8003 .venv/bin/python -m oracle.server
+```
+
+`python -m oracle.server`는 Oracle/Linux 실행 진입점이므로 `APP_MODE`를 생략해도
+자동으로 `oracle` 모드로 시작합니다. 명시적으로 지정한 값은 그대로 유지합니다.
+Docker Compose는 API/worker/scanner에 `APP_MODE=oracle`를 주입하므로 `.env`에 남아 있는
+Vercel용 설정 때문에 전체시장 API가 비활성화되지 않습니다.
+
+`oracle.server`는 `HOST`와 `PORT` 환경변수를 읽습니다. Nginx와 같은 서버 안에서 연결할 때는 `HOST=127.0.0.1`, 컨테이너나 외부 인터페이스에 직접 bind할 때는 `HOST=0.0.0.0`을 사용합니다. KIS 키 없이 `DATA_PROVIDER=auto`이면 Naver/KRX/Demo fallback으로 실행되며, `DATA_PROVIDER=kis`를 강제했는데 키가 없으면 API에 명확한 provider 오류가 반환됩니다.
+
+systemd 예시:
+
+```ini
+[Unit]
+Description=stock53 Turtle Signal Guide
+After=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/stock53
+EnvironmentFile=/opt/stock53/.env
+Environment=APP_MODE=oracle
+Environment=HOST=127.0.0.1
+Environment=PORT=8003
+ExecStart=/opt/stock53/.venv/bin/python -m oracle.server
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Nginx subpath 예시(전역 `/api/` location은 만들지 않음):
+
+```nginx
+location /stock53-7/ {
+    proxy_pass http://127.0.0.1:8003/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+브라우저 API 주소는 공통 resolver가 현재 페이지 기준 상대경로로 만들기 때문에 Vercel `/api/...`와 Oracle `/stock53-7/api/...`를 한 코드로 지원합니다. 55D 기능은 WebSocket이나 Vercel 전용 KV/Cron을 요구하지 않습니다.
+
+### Docker Compose
+
 ```bash
 cp .env.example .env
 # .env에 실제 값을 넣되 commit하지 않음
@@ -256,7 +320,7 @@ TELEGRAM_CHAT_ID=...
 DB_PATH=./data/turtle.db
 ```
 
-`oracle.worker`는 기본 polling worker입니다. PREALERT, BREAKOUT, ADD, STOP, EXIT를 SQLite event key로 한 번만 Telegram 전송합니다. 메시지는 현재가, 조건가, next add, stop, exit, 제안 수량·금액, risk budget을 포함합니다.
+`oracle.worker`는 기본 polling worker입니다. 20D·55D 롱/숏 PREALERT, BREAKOUT, ADD, STOP, EXIT를 SQLite event key로 한 번만 Telegram 전송합니다. 메시지는 현재가, 조건가, next add, stop, exit, 제안 수량·금액, risk budget을 포함합니다.
 
 `oracle.scanner`는 시총·영업이익 필터 뒤 전체시장 신호를 계산하고 같은 dedup 규칙으로 Telegram을 전송합니다. `FULL_SCAN_INTERVAL_SECONDS=0`은 1회 실행이며, cron/Oracle scheduler로 장중 주기를 관리하는 방식을 권장합니다. 체결 Unit은 scanner/worker 어느 쪽도 자동 증가시키지 않습니다.
 
@@ -267,6 +331,9 @@ DB_PATH=./data/turtle.db
 ## 테스트 범위
 
 - today 제외 20D breakout / PREALERT 1% / BREAKOUT
+- today 제외 55D 롱·숏 PREALERT / BREAKOUT 및 어제 돌파 제외
+- 55일 미만 `N/A`, 55D 정확한 거래일 window, 공통 PREALERT 입력 경계값
+- 55D 롱 20D Low Exit / 숏 20D High Exit / 2N STOP / Unit #2~#6
 - yesterday breakout 제외
 - ATR20 / 10D exit
 - 10D 평균거래대금 / BREAKOUT 당일 상승률 / 투자자 수급 선택 필터
@@ -289,6 +356,8 @@ DB_PATH=./data/turtle.db
 - 재무 filter 선적용 후 시세 history 조회
 - 전체시장 background scan API와 snapshot 조회
 - Vercel 필수 route smoke
+- AI 복사 20D·55D 8개 그룹 및 단일 PREALERT 입력 UI
+- Oracle `HOST`/`PORT` 실행 entrypoint와 System 2 SQLite 기간 저장
 
 ## 남은 운영 TODO
 

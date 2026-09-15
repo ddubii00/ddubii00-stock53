@@ -16,6 +16,8 @@ UNIT_OFFSETS = (0.0, 0.5, 1.0, 1.5, 2.0, 2.5)
 class PositionGuide:
     symbol: str
     side: str
+    system_period: int
+    exit_channel_period: int
     current: float
     entry_price: float
     n_at_entry: float
@@ -147,6 +149,7 @@ def build_position_guide(
     exit_strategy: str = "turtle",
     prealert_pct: float = 1.0,
     side: str = "long",
+    system_period: int = 20,
     fill_prices: Sequence[float] | None = None,
 ) -> PositionGuide:
     if len(bars) < 21:
@@ -160,6 +163,8 @@ def build_position_guide(
     position_side = side.strip().lower()
     if position_side not in {"long", "short"}:
         raise ValueError("side must be long or short")
+    if system_period not in {20, 55}:
+        raise ValueError("system_period must be 20 or 55")
     exit_mode = exit_strategy.strip().lower()
     if exit_mode not in {"turtle", "ma_staged"}:
         raise ValueError("exit_strategy must be turtle or ma_staged")
@@ -224,10 +229,11 @@ def build_position_guide(
     common_stop = _ratcheted_stop(
         side=position_side, calculated=calculated_stop, previous_stop=previous_stop
     )
+    exit_period = 20 if system_period == 55 else 10
     exit10 = (
-        min(bar.low for bar in bars[-10:])
+        min(bar.low for bar in bars[-exit_period:])
         if position_side == "long"
-        else max(bar.high for bar in bars[-10:])
+        else max(bar.high for bar in bars[-exit_period:])
     )
     ma5 = sum(bar.close for bar in bars[-5:]) / 5.0
     ma10 = sum(bar.close for bar in bars[-10:]) / 10.0
@@ -287,7 +293,9 @@ def build_position_guide(
         action_price = exit10
         action_qty = total_qty
         action_amount = action_qty * current
-        reasons.append("System 1 직전 10일 채널 청산선 도달")
+        reasons.append(
+            f"System {'2' if system_period == 55 else '1'} 직전 {exit_period}일 채널 청산선 도달"
+        )
     elif add_now:
         action = "ADD_NOW"
         action_price = next_add_price
@@ -334,13 +342,17 @@ def build_position_guide(
         sell_price = exit10
         sell_pct = 100
         channel = (
-            "10거래일 최저가 이탈"
+            f"{exit_period}거래일 최저가 이탈"
             if position_side == "long"
-            else "10거래일 최고가 상향 돌파"
+            else f"{exit_period}거래일 최고가 상향 돌파"
         )
-        sell_reasons.append(f"정통 System 1 대칭 청산: {channel}, 전량 청산")
+        sell_reasons.append(
+            f"정통 System {'2' if system_period == 55 else '1'} 대칭 청산: {channel}, 전량 청산"
+        )
     elif position_side == "short":
-        sell_reasons.append("숏 포지션: 2N 상단 손절과 10D High 환매 청산선을 추적")
+        sell_reasons.append(
+            f"숏 포지션: 2N 상단 손절과 {exit_period}D High 환매 청산선을 추적"
+        )
     elif exit_mode == "ma_staged" and current <= ma10:
         sell_action = "REDUCE_2"
         sell_price = ma10
@@ -352,13 +364,19 @@ def build_position_guide(
         sell_pct = 50
         sell_reasons.append("MA5 이탈: 1차 50% 분할매도 검토")
     elif exit_mode == "ma_staged":
-        sell_reasons.append("MA5·MA10 위: 보유, 10D Low 전량청산선 추적")
+        sell_reasons.append(
+            f"MA5·MA10 위: 보유, {exit_period}D Low 전량청산선 추적"
+        )
     else:
-        sell_reasons.append("정통 Turtle: 고정 익절 없이 10D Low 전량청산선 추적")
+        sell_reasons.append(
+            f"정통 Turtle: 고정 익절 없이 {exit_period}D Low 전량청산선 추적"
+        )
 
     return PositionGuide(
         symbol=symbol,
         side=position_side,
+        system_period=system_period,
+        exit_channel_period=exit_period,
         current=current,
         entry_price=entry_price,
         n_at_entry=n,

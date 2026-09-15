@@ -26,6 +26,7 @@ class Quote:
     volume: float = 0.0
     source: str = ""
     day_high: float | None = None
+    day_low: float | None = None
     change_pct: float | None = None
     date: str = ""
 
@@ -227,6 +228,7 @@ class DemoMarketDataProvider:
             volume=1_100_000,
             source=self.name,
             day_high=price,
+            day_low=price,
             change_pct=(price / bars[-1].close - 1.0) * 100.0,
             date=bars[-1].date,
         )
@@ -330,6 +332,7 @@ class NaverMarketDataProvider:
             price = _number(row.get("nv") or row.get("closePrice") or row.get("nowVal"))
             volume = _number(row.get("aq") or row.get("accQuant") or 0)
             day_high = _number(row.get("hv") or row.get("highPrice") or price)
+            day_low = _number(row.get("lv") or row.get("lowPrice") or price)
             previous_close = _number(row.get("pcv") or 0)
             # Naver exposes the tradable NXT pre/after-market quote separately.
             # Prefer it only while that session is actually open; otherwise `nv`
@@ -344,6 +347,8 @@ class NaverMarketDataProvider:
                 price = nxt_price
                 volume = _number(nxt.get("accumulatedTradingVolumeRaw") or volume)
             day_high = max(day_high, _number(nxt.get("highPrice") or 0), price)
+            nxt_low = _number(nxt.get("lowPrice") or 0)
+            day_low = min(value for value in (day_low, nxt_low, price) if value > 0)
             change_pct = (
                 (price / previous_close - 1.0) * 100.0
                 if previous_close > 0
@@ -371,6 +376,7 @@ class NaverMarketDataProvider:
             volume=volume,
             source=self.name,
             day_high=day_high,
+            day_low=day_low,
             change_pct=change_pct,
             date=quote_date,
         )
@@ -460,6 +466,7 @@ class KrxMarketDataProvider:
             volume=_number(row["거래량"]),
             source=self.name,
             day_high=_number(row["고가"]),
+            day_low=_number(row["저가"]),
             change_pct=(price / previous_close - 1.0) * 100.0 if previous_close > 0 else None,
             date=session_date,
         )
@@ -600,6 +607,7 @@ class KisMarketDataProvider:
             volume=_number(out.get("acml_vol")),
             source=self.name,
             day_high=_number(out.get("stck_hgpr")),
+            day_low=_number(out.get("stck_lwpr")),
             change_pct=_number(out.get("prdy_ctrt")),
             date=quote_date,
         )
