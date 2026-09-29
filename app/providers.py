@@ -273,8 +273,9 @@ class NaverMarketDataProvider:
     quote_url = "https://polling.finance.naver.com/api/realtime"
     investor_url = "https://m.stock.naver.com/api/stock/{symbol}/trend"
 
-    def __init__(self, timeout: float = 7.0):
+    def __init__(self, timeout: float = 7.0, *, prefer_nxt: bool = True):
         self.timeout = timeout
+        self.prefer_nxt = prefer_nxt
         self._local = threading.local()
 
     def _session(self) -> requests.Session:
@@ -359,7 +360,7 @@ class NaverMarketDataProvider:
                 str((nxt.get("tradeStopType") or {}).get("name", "")).upper() == "TRADING"
                 and str(nxt.get("tradableStatus", "")).lower() == "tradable"
             )
-            if nxt_trading and nxt_price > 0:
+            if self.prefer_nxt and nxt_trading and nxt_price > 0:
                 price = nxt_price
                 volume = _number(nxt.get("accumulatedTradingVolumeRaw") or volume)
             day_high = max(day_high, _number(nxt.get("highPrice") or 0), price)
@@ -463,6 +464,10 @@ class KrxMarketDataProvider:
         return bars
 
     def get_current_price(self, symbol: str) -> Quote:
+        # Some pykrx installations now expose the NXT/after-hours 20:00
+        # value as the daily close.  Use Naver's regular-market field (`nv`)
+        # for this optional adapter so signals use the 15:30 closing auction.
+        regular_quote = NaverMarketDataProvider(prefer_nxt=False).get_current_price(symbol)
         end = _today_kst_date()
         frame = self.stock.get_market_ohlcv_by_date((end - timedelta(days=10)).strftime("%Y%m%d"), end.strftime("%Y%m%d"), symbol)
         if frame.empty:
@@ -475,16 +480,18 @@ class KrxMarketDataProvider:
             else _session_date(index)
         )
         previous_close = _number(frame.iloc[-2]["종가"]) if len(frame) >= 2 else 0.0
-        price = _number(row["종가"])
+        price = regular_quote.price
         return Quote(
             symbol=symbol,
             price=price,
-            volume=_number(row["거래량"]),
+            volume=regular_quote.volume or _number(row["거래량"]),
             source=self.name,
-            day_high=_number(row["고가"]),
-            day_low=_number(row["저가"]),
-            change_pct=(price / previous_close - 1.0) * 100.0 if previous_close > 0 else None,
-            date=session_date,
+            day_high=regular_quote.day_high or _number(row["고가"]),
+            day_low=regular_quote.day_low or _number(row["저가"]),
+            change_pct=regular_quote.change_pct if regular_quote.change_pct is not None else (
+                (price / previous_close - 1.0) * 100.0 if previous_close > 0 else None
+            ),
+            date=regular_quote.date or session_date,
         )
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:

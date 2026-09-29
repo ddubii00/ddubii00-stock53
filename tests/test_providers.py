@@ -313,6 +313,29 @@ def test_naver_quote_uses_regular_price_when_nxt_is_closed(monkeypatch):
     assert quote.change_pct == pytest.approx(4.625)
 
 
+def test_naver_quote_can_force_regular_close_when_nxt_is_trading(monkeypatch):
+    provider = NaverMarketDataProvider(prefer_nxt=False)
+    session = QuoteSession(
+        {
+            "nv": 1_674_000,
+            "hv": 1_680_000,
+            "pcv": 1_600_000,
+            "aq": 123,
+            "nxtOverMarketPriceInfo": {
+                "overPrice": "1,700,000",
+                "tradeStopType": {"name": "TRADING"},
+                "tradableStatus": "tradable",
+            },
+        }
+    )
+    monkeypatch.setattr(provider, "_session", lambda: session)
+
+    quote = provider.get_current_price("000660")
+
+    assert quote.price == 1_674_000
+    assert quote.volume == 123
+
+
 def test_naver_investor_flow_exposes_latest_completed_date_and_estimated_amount(monkeypatch):
     provider = NaverMarketDataProvider()
     monkeypatch.setattr(provider, "_session", lambda: InvestorSession())
