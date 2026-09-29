@@ -536,6 +536,7 @@ class KisMarketDataProvider:
         self._token_lock = threading.Lock()
         self._session_date_lock = threading.Lock()
         self._session_dates: dict[str, str] = {}
+        self._regular_close_bars: dict[str, tuple[Bar, Bar | None]] = {}
 
     def _access_token(self) -> str:
         if self._token and time.time() < self._token_expiry - 60:
@@ -624,16 +625,74 @@ class KisMarketDataProvider:
             )
             or remembered_date
         )
+        price = _number(out.get("stck_prpr"))
+        volume = _number(out.get("acml_vol"))
+        day_high = _number(out.get("stck_hgpr"))
+        day_low = _number(out.get("stck_lwpr"))
+        change_pct = _number(out.get("prdy_ctrt"))
+        # After the regular session, KIS can expose an NXT/after-hours price
+        # through stck_prpr.  The cached daily candle is the regular KRX
+        # closing auction and is therefore the reference for signals.
+        if not _regular_session_is_open():
+            regular = self._regular_close_bars.get(symbol)
+            if regular is None and quote_date:
+                try:
+                    self._load_regular_close_bars(symbol)
+                    regular = self._regular_close_bars.get(symbol)
+                except Exception:
+                    regular = None
+            if regular is not None:
+                bar, previous = regular
+                if not quote_date or bar.date == quote_date or bar.date == _today_kst():
+                    price = bar.close
+                    volume = bar.volume
+                    day_high = bar.high
+                    day_low = bar.low
+                    change_pct = (
+                        (bar.close / previous.close - 1.0) * 100.0
+                        if previous is not None and previous.close > 0
+                        else change_pct
+                    )
+                    quote_date = bar.date
         return Quote(
             symbol=symbol,
-            price=_number(out.get("stck_prpr")),
-            volume=_number(out.get("acml_vol")),
+            price=price,
+            volume=volume,
             source=self.name,
-            day_high=_number(out.get("stck_hgpr")),
-            day_low=_number(out.get("stck_lwpr")),
-            change_pct=_number(out.get("prdy_ctrt")),
+            day_high=day_high,
+            day_low=day_low,
+            change_pct=change_pct,
             date=quote_date,
         )
+
+    def _load_regular_close_bars(self, symbol: str) -> None:
+        end = _today_kst_date()
+        start = end - timedelta(days=14)
+        payload = self._get_json(
+            "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
+            "FHKST03010100",
+            {
+                "FID_COND_MRKT_DIV_CODE": "J",
+                "FID_INPUT_ISCD": symbol,
+                "FID_INPUT_DATE_1": start.strftime("%Y%m%d"),
+                "FID_INPUT_DATE_2": end.strftime("%Y%m%d"),
+                "FID_PERIOD_DIV_CODE": "D",
+                "FID_ORG_ADJ_PRC": "0",
+            },
+            "KIS regular close error",
+        )
+        parsed: list[Bar] = []
+        for row in payload.get("output2") or []:
+            session_date = str(row.get("stck_bsop_date") or "")
+            close = _number(row.get("stck_clpr"))
+            high = _number(row.get("stck_hgpr"))
+            low = _number(row.get("stck_lwpr"))
+            volume = _number(row.get("acml_vol"))
+            if session_date and min(close, high, low) > 0:
+                parsed.append(Bar(high, low, close, volume, close * volume, session_date))
+        parsed.sort(key=lambda bar: bar.date)
+        if parsed:
+            self._regular_close_bars[symbol] = (parsed[-1], parsed[-2] if len(parsed) > 1 else None)
 
     def get_daily_ohlcv(self, symbol: str, count: int = 260) -> list[Bar]:
         end = _today_kst_date()
@@ -672,6 +731,7 @@ class KisMarketDataProvider:
                 continue
         parsed.sort(key=lambda item: item[0])
         if parsed:
+            self._regular_close_bars[symbol] = (parsed[-1][1], parsed[-2][1] if len(parsed) > 1 else None)
             with self._session_date_lock:
                 self._session_dates[symbol] = parsed[-1][0]
         bars = _completed([bar for _, bar in parsed], count)
