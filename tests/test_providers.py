@@ -266,6 +266,7 @@ def test_kis_investor_amount_falls_back_to_quantity_times_close(monkeypatch):
 
 
 def test_naver_quote_prefers_open_nxt_session_price(monkeypatch):
+    monkeypatch.setattr("app.providers._regular_session_is_open", lambda: True)
     provider = NaverMarketDataProvider()
     session = QuoteSession(
         {

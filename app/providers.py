@@ -360,7 +360,11 @@ class NaverMarketDataProvider:
                 str((nxt.get("tradeStopType") or {}).get("name", "")).upper() == "TRADING"
                 and str(nxt.get("tradableStatus", "")).lower() == "tradable"
             )
-            if self.prefer_nxt and nxt_trading and nxt_price > 0:
+            # The app's reference price is KRX regular-session price after
+            # 15:30.  Even if Naver still reports the NXT venue as tradable,
+            # do not let its 20:00 after-hours value replace the closing
+            # auction.  NXT is used only while the regular session is open.
+            if self.prefer_nxt and _regular_session_is_open() and nxt_trading and nxt_price > 0:
                 price = nxt_price
                 volume = _number(nxt.get("accumulatedTradingVolumeRaw") or volume)
             day_high = max(day_high, _number(nxt.get("highPrice") or 0), price)
