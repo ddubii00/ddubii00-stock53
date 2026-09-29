@@ -186,6 +186,29 @@ def test_kis_retries_api_error_before_fallback(monkeypatch):
     assert quote.price == 337_000
 
 
+def test_kis_does_not_label_missing_session_date_as_today_after_close(monkeypatch):
+    monkeypatch.setenv("KIS_APP_KEY", "test-key")
+    monkeypatch.setenv("KIS_APP_SECRET", "test-secret")
+    provider = KisMarketDataProvider()
+    provider._token = "cached-test-token"
+    provider._token_expiry = 9_999_999_999
+    provider._get_json = lambda *args, **kwargs: {
+        "output": {
+            "stck_prpr": "337000",
+            "acml_vol": "222733",
+            "stck_hgpr": "345000",
+            "stck_lwpr": "330000",
+            "prdy_ctrt": "-1.46",
+            "new_mkop_cls_code": "10",
+        }
+    }
+    monkeypatch.setattr("app.providers._regular_session_is_open", lambda: False)
+
+    quote = provider.get_current_price("005490")
+
+    assert quote.date == ""
+
+
 def test_kis_investor_amounts_convert_million_won_to_won(monkeypatch):
     monkeypatch.setenv("KIS_APP_KEY", "test-key")
     monkeypatch.setenv("KIS_APP_SECRET", "test-secret")

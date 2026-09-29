@@ -67,6 +67,22 @@ def _today_kst_date() -> date:
     return datetime.now(SEOUL).date()
 
 
+def _regular_session_is_open() -> bool:
+    """Return whether the Korean regular continuous session is open.
+
+    The quote APIs may return a value even when the exchange is closed.  We
+    only treat that value as a live *current* price during the regular
+    session; after 15:30 the provider's session-date/closing quote is the
+    reference instead.  Exchange holidays are handled by the quote date and
+    the completed daily bars.
+    """
+
+    now = datetime.now(SEOUL)
+    return now.weekday() < 5 and (now.hour, now.minute) >= (9, 0) and (
+        now.hour, now.minute
+    ) < (15, 30)
+
+
 def _completed(bars: list[Bar], count: int) -> list[Bar]:
     """Remove the current Korean trading date to enforce D-1 strategy windows."""
 
@@ -595,7 +611,7 @@ class KisMarketDataProvider:
             _session_date(out.get("stck_bsop_date"))
             or (
                 _today_kst()
-                if _today_kst_date().weekday() < 5
+                if _regular_session_is_open()
                 and market_code in {"10", "20", "30", "40", "51", "52"}
                 else ""
             )
