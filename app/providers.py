@@ -68,19 +68,49 @@ def _today_kst_date() -> date:
 
 
 def _regular_session_is_open() -> bool:
-    """Return whether the Korean regular continuous session is open.
+    """Return whether the KRX regular session is still trading.
 
-    The quote APIs may return a value even when the exchange is closed.  We
-    only treat that value as a live *current* price during the regular
-    session; after 15:30 the provider's session-date/closing quote is the
-    reference instead.  Exchange holidays are handled by the quote date and
-    the completed daily bars.
+    09:00~15:29 uses the live KRX quote.  The 15:30 closing auction can take
+    a short time to propagate to the daily-candle endpoint, so 15:30~15:31
+    keeps polling the KRX-only (J) quote.  From 15:32 onward the completed
+    regular-session daily candle is authoritative.
     """
 
     now = datetime.now(SEOUL)
     return now.weekday() < 5 and (now.hour, now.minute) >= (9, 0) and (
         now.hour, now.minute
     ) < (15, 30)
+
+
+def _regular_close_should_use_daily_bar() -> bool:
+    """Whether a completed regular-session daily bar must be authoritative.
+
+    Before 09:00 we use the previous regular close.  At 15:30~15:31 we keep
+    the KRX-only J quote so the closing auction has roughly two minutes to
+    settle.  At 15:32+ (and on weekends) we freeze price/change to the latest
+    completed regular-session daily bar, never an NXT/after-hours quote.
+    """
+
+    now = datetime.now(SEOUL)
+    if now.weekday() >= 5:
+        return True
+    clock = (now.hour, now.minute)
+    return clock < (9, 0) or clock >= (15, 32)
+
+
+def _regular_close_refresh_key() -> str:
+    """Key that forces a fresh close load when pre/post-close regime changes."""
+
+    now = datetime.now(SEOUL)
+    today = now.strftime("%Y%m%d")
+    if now.weekday() >= 5:
+        return f"{today}:closed"
+    clock = (now.hour, now.minute)
+    if clock < (9, 0):
+        return f"{today}:pre"
+    if clock >= (15, 32):
+        return f"{today}:post"
+    return f"{today}:live"
 
 
 def _completed(bars: list[Bar], count: int) -> list[Bar]:
@@ -351,25 +381,28 @@ class NaverMarketDataProvider:
             day_high = _number(row.get("hv") or row.get("highPrice") or price)
             day_low = _number(row.get("lv") or row.get("lowPrice") or price)
             previous_close = _number(row.get("pcv") or 0)
-            # Naver exposes the tradable NXT pre/after-market quote separately.
-            # Prefer it only while that session is actually open; otherwise `nv`
-            # remains the regular-market live quote (or the latest close).
             nxt = row.get("nxtOverMarketPriceInfo") or {}
             nxt_price = _number(nxt.get("overPrice"))
             nxt_trading = (
                 str((nxt.get("tradeStopType") or {}).get("name", "")).upper() == "TRADING"
                 and str(nxt.get("tradableStatus", "")).lower() == "tradable"
             )
-            # The app's reference price is KRX regular-session price after
-            # 15:30.  Even if Naver still reports the NXT venue as tradable,
-            # do not let its 20:00 after-hours value replace the closing
-            # auction.  NXT is used only while the regular session is open.
-            if self.prefer_nxt and _regular_session_is_open() and nxt_trading and nxt_price > 0:
+            use_nxt = (
+                self.prefer_nxt
+                and _regular_session_is_open()
+                and nxt_trading
+                and nxt_price > 0
+            )
+            if use_nxt:
                 price = nxt_price
                 volume = _number(nxt.get("accumulatedTradingVolumeRaw") or volume)
-            day_high = max(day_high, _number(nxt.get("highPrice") or 0), price)
-            nxt_low = _number(nxt.get("lowPrice") or 0)
-            day_low = min(value for value in (day_low, nxt_low, price) if value > 0)
+                day_high = max(day_high, _number(nxt.get("highPrice") or 0), price)
+                nxt_low = _number(nxt.get("lowPrice") or 0)
+                day_low = min(value for value in (day_low, nxt_low, price) if value > 0)
+            else:
+                # Never contaminate regular-session high/low with NXT data.
+                day_high = max(day_high, price)
+                day_low = min(value for value in (day_low, price) if value > 0)
             change_pct = (
                 (price / previous_close - 1.0) * 100.0
                 if previous_close > 0
@@ -391,6 +424,31 @@ class NaverMarketDataProvider:
             or (_today_kst() if market_status == "OPEN" or nxt_trading else "")
             or getattr(self._local, "session_dates", {}).get(symbol, "")
         )
+
+        # When the regular close is authoritative, replace every realtime/NXT
+        # field with the regular daily candle.  During 15:30~15:31, use the
+        # candle only if today's closing candle has already propagated;
+        # otherwise keep the regular-only realtime quote until 15:32.
+        if not _regular_session_is_open():
+            try:
+                bars = self._get_latest_regular_bars(symbol)
+                if bars:
+                    bar = bars[-1]
+                    previous = bars[-2] if len(bars) >= 2 else None
+                    if _regular_close_should_use_daily_bar() or bar.date == _today_kst():
+                        price = bar.close
+                        volume = bar.volume
+                        day_high = bar.high
+                        day_low = bar.low
+                        change_pct = (
+                            (bar.close / previous.close - 1.0) * 100.0
+                            if previous is not None and previous.close > 0
+                            else change_pct
+                        )
+                        quote_date = bar.date
+            except Exception:
+                pass
+
         return Quote(
             symbol=symbol,
             price=price,
@@ -401,6 +459,34 @@ class NaverMarketDataProvider:
             change_pct=change_pct,
             date=quote_date,
         )
+
+    def _get_latest_regular_bars(self, symbol: str) -> list[Bar]:
+        """Fetch the latest raw KRX daily candles without dropping today."""
+
+        response = self._session().get(
+            self.chart_url,
+            params={"symbol": symbol, "timeframe": "day", "count": 3, "requestType": "0"},
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        root = ET.fromstring(response.text)
+        bars: list[Bar] = []
+        for item in root.findall(".//item"):
+            parts = item.attrib.get("data", "").split("|")
+            if len(parts) < 6:
+                continue
+            session_date, _open, high, low, close, volume = parts[:6]
+            try:
+                h, low_value, c, v = map(_number, (high, low, close, volume))
+            except ValueError:
+                continue
+            if not session_date or min(h, low_value, c) <= 0:
+                continue
+            bars.append(
+                Bar(high=h, low=low_value, close=c, volume=v, value=v * c, date=session_date)
+            )
+        bars.sort(key=lambda bar: bar.date)
+        return bars[-3:]
 
     def get_investor_flow(self, symbol: str) -> InvestorFlow:
         response = self._session().get(
@@ -468,9 +554,6 @@ class KrxMarketDataProvider:
         return bars
 
     def get_current_price(self, symbol: str) -> Quote:
-        # Some pykrx installations now expose the NXT/after-hours 20:00
-        # value as the daily close.  Use Naver's regular-market field (`nv`)
-        # for this optional adapter so signals use the 15:30 closing auction.
         regular_quote = NaverMarketDataProvider(prefer_nxt=False).get_current_price(symbol)
         end = _today_kst_date()
         frame = self.stock.get_market_ohlcv_by_date((end - timedelta(days=10)).strftime("%Y%m%d"), end.strftime("%Y%m%d"), symbol)
@@ -541,6 +624,9 @@ class KisMarketDataProvider:
         self._session_date_lock = threading.Lock()
         self._session_dates: dict[str, str] = {}
         self._regular_close_bars: dict[str, tuple[Bar, Bar | None]] = {}
+        # A morning/history load must not be reused as the post-close final
+        # reference.  The regime key forces one fresh load at 15:32+.
+        self._regular_close_refresh_keys: dict[str, str] = {}
 
     def _access_token(self) -> str:
         if self._token and time.time() < self._token_expiry - 60:
@@ -569,8 +655,6 @@ class KisMarketDataProvider:
         }
 
     def _get_json(self, path: str, tr_id: str, params: dict[str, str], label: str) -> dict:
-        """Retry transient KIS failures before allowing the fallback chain to run."""
-
         try:
             attempts = max(1, min(5, int(os.getenv("KIS_RETRY_ATTEMPTS", "3"))))
         except ValueError:
@@ -634,30 +718,36 @@ class KisMarketDataProvider:
         day_high = _number(out.get("stck_hgpr"))
         day_low = _number(out.get("stck_lwpr"))
         change_pct = _number(out.get("prdy_ctrt"))
-        # After the regular session, KIS can expose an NXT/after-hours price
-        # through stck_prpr.  The cached daily candle is the regular KRX
-        # closing auction and is therefore the reference for signals.
-        if not _regular_session_is_open():
+        # KIS current-price is explicitly requested with market code J (KRX).
+        # 15:30~15:31 keeps that KRX-only quote so the closing auction has time
+        # to propagate.  From 15:32 onward, force a fresh regular daily-candle
+        # load and freeze price/change/high/low to that completed KRX session.
+        if not _regular_session_is_open() and _regular_close_should_use_daily_bar():
             regular = self._regular_close_bars.get(symbol)
-            if regular is None and quote_date:
+            refresh_key = _regular_close_refresh_key()
+            if self._regular_close_refresh_keys.get(symbol) != refresh_key:
                 try:
                     self._load_regular_close_bars(symbol)
                     regular = self._regular_close_bars.get(symbol)
+                    if regular is not None:
+                        self._regular_close_refresh_keys[symbol] = refresh_key
                 except Exception:
-                    regular = None
+                    # If the daily close endpoint is temporarily late/unavailable,
+                    # keep the KRX-only J quote.  The next UI poll retries because
+                    # the refresh key is intentionally left unset.
+                    regular = self._regular_close_bars.get(symbol)
             if regular is not None:
                 bar, previous = regular
-                if not quote_date or bar.date == quote_date or bar.date == _today_kst():
-                    price = bar.close
-                    volume = bar.volume
-                    day_high = bar.high
-                    day_low = bar.low
-                    change_pct = (
-                        (bar.close / previous.close - 1.0) * 100.0
-                        if previous is not None and previous.close > 0
-                        else change_pct
-                    )
-                    quote_date = bar.date
+                price = bar.close
+                volume = bar.volume
+                day_high = bar.high
+                day_low = bar.low
+                change_pct = (
+                    (bar.close / previous.close - 1.0) * 100.0
+                    if previous is not None and previous.close > 0
+                    else change_pct
+                )
+                quote_date = bar.date
         return Quote(
             symbol=symbol,
             price=price,
@@ -772,7 +862,6 @@ class KisMarketDataProvider:
         ):
             raise RuntimeError(f"KIS investor flow fields are missing for {symbol}")
 
-        # KIS documents *_ntby_tr_pbmn as an amount in KRW millions.
         def amount_in_won(raw: object, quantity: float) -> tuple[float, bool]:
             if raw not in (None, ""):
                 amount = _number(raw) * 1_000_000
@@ -849,7 +938,7 @@ def build_market_data_provider(mode: str | None = None) -> MarketDataProvider:
     if selected == "demo":
         return DemoMarketDataProvider()
     if selected == "naver":
-        return NaverMarketDataProvider()
+        return NaverMarketDataProvider(prefer_nxt=False)
     if selected == "krx":
         return KrxMarketDataProvider()
     if selected == "kis":
@@ -860,7 +949,9 @@ def build_market_data_provider(mode: str | None = None) -> MarketDataProvider:
     providers: list[MarketDataProvider] = []
     if os.getenv("KIS_APP_KEY") and os.getenv("KIS_APP_SECRET"):
         providers.append(KisMarketDataProvider())
-    providers.append(NaverMarketDataProvider())
+    # stock53 is a KRX regular-session strategy: Naver is fallback only and
+    # must never switch the displayed price/change to NXT.
+    providers.append(NaverMarketDataProvider(prefer_nxt=False))
     krx = _try_krx()
     if krx is not None:
         providers.append(krx)
